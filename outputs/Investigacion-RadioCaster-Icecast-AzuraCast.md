@@ -116,7 +116,7 @@ Los mounts permiten distintas calidades/formats de una misma programación. Las 
 
 También se pueden administrar archivos, listas, horarios, solicitudes, servicios y webhooks según los permisos de la cuenta. Los eventos/webhooks servirían para avisos de cambios o integraciones futuras; no se configuró ninguno ni se enviaron mensajes. [API y autenticación](https://www.azuracast.com/docs/developers/apis/), [listas programadas](https://www.azuracast.com/docs/user-guide/playlists/).
 
-AzuraCast puede emitir a un servidor secundario mediante Remote Relay y sumar sus estadísticas cuando se puedan consultar. Es una alternativa a dos conexiones desde RadioCaster: debe comprobarse si el secundario admite la conexión y qué metadatos conserva. No presupone que «Xeno.fm» sea Zeno.fm ni que sus portadas se repliquen. [Relays](https://www.azuracast.com/docs/user-guide/remote-relays/).
+AzuraCast puede emitir a un servidor secundario mediante Remote Relay y sumar sus estadísticas cuando se puedan consultar. Es una alternativa a dos conexiones desde RadioCaster: debe comprobarse si el secundario admite la conexión y qué metadatos conserva. El usuario confirmó posteriormente que el destino secundario es Zeno.fm. Sigue pendiente verificar que el relay conserve los títulos y cómo se muestran las portadas allí. [Relays](https://www.azuracast.com/docs/user-guide/remote-relays/).
 
 ## 9. Camino recomendado para ORO FM
 

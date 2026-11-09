@@ -74,7 +74,7 @@ En **Ajustes → AzuraCast y monitoreo** se pueden comprobar título, álbum e i
 
 La publicación directa por API AzuraCast es otra opción desactivada inicialmente. Solo envía artista y título: la API investigada filtra álbum/imagen. Las carátulas automáticas de AzuraCast se configuran desde su panel; la app incluye una guía. Para límites y fuentes documentales lee [Integraciones](docs/INTEGRACIONES.md).
 
-El nombre «Xeno.fm» requiere confirmar el dominio/proveedor exacto. La investigación encontró documentación oficial de **Zeno.fm**; no se presupone que sean el mismo servicio.
+El destino secundario es **Zeno.fm**, confirmado por el usuario. La ruta inicial es RadioCaster → Zeno.fm mediante los datos de conexión de su panel. La compatibilidad de títulos y carátulas debe comprobarse por separado.
 
 ## Datos y arquitectura
 

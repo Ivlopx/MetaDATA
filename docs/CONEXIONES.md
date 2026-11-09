@@ -5,7 +5,7 @@ La demo y la interfaz no necesitan credenciales reales. Para la primera prueba e
 1. Versión de RadioBOSS y RadioCaster; URL/puerto de API local RadioBOSS y si usa usuario.
 2. Carpetas reales de canciones y de anuncios/promos/jingles; nombres de tipos de archivo configurados en RadioBOSS.
 3. Nombre, eslogan, web, descripción, mensajes y archivo de logo.
-4. Confirmación del proveedor secundario: ¿es `zeno.fm` u otro dominio? Verificarlo en el panel del servicio.
+4. El proveedor secundario es **Zeno.fm**, confirmado por el usuario. Para conectar, utilizar el servidor y mount específicos que indique su panel.
 5. Para la ruta recomendada, confirmar que los dos encoders ya conectan desde RadioCaster. No hacen falta sus claves dentro de esta app.
 6. Solo si se elige escritura Icecast directa: URL base, mount exacto, nombre de usuario y qué variable de entorno local tendrá la contraseña. Para AzuraCast, confirmar primero que se trata de un endpoint Icecast administrativo autorizado y no de su entrada Liquidsoap DJ.
 
