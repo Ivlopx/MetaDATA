@@ -1,4 +1,6 @@
 """Read-only source adapters. Never infer playback from a window title."""
+from .credentials import read_secret, secret_id
+
 import asyncio
 import base64
 import os
@@ -49,13 +51,14 @@ def parse_playback(xml: bytes) -> Snapshot:
 class RadioBossSource:
     name = "radioboss"
 
-    def __init__(self, config):
+    def __init__(self, config, credentials=None):
         self.config = config
+        self.credentials = credentials
 
     async def _request(self, **params):
-        password = os.environ.get(self.config.radioboss_password_env, "")
+        password = read_secret(self.credentials, secret_id("radioboss", self.config.radioboss_url, self.config.radioboss_user), self.config.radioboss_password_env, managed=secret_id("radioboss", self.config.radioboss_url, self.config.radioboss_user) in self.config.managed_credentials)
         if not password:
-            raise ValueError("Falta contraseña en variable de entorno")
+            raise ValueError("Introduce la contraseña en Conexiones → RadioBOSS")
         params.update({"pass": password, "user": self.config.radioboss_user})
         # Do not log request URLs: RadioBOSS authenticates via query parameters.
         async with httpx.AsyncClient(timeout=3, follow_redirects=False, trust_env=False) as client:
@@ -184,12 +187,12 @@ class DemoSource:
                         album="Álbum de ejemplo", album_artist="Artista de ejemplo", duration_ms=180000)
 
 
-def make_sources(config, demo=False, scenario="radioboss"):
+def make_sources(config, demo=False, scenario="radioboss", credentials=None):
     if demo:
         return [DemoSource(n, scenario) for n in ("radioboss", "spotify")]
     sources = []
     if config.radioboss_enabled:
-        sources.append(RadioBossSource(config))
+        sources.append(RadioBossSource(config, credentials))
     if config.spotify_enabled:
         sources.append(SpotifyWindowsSource(config))
     return sources

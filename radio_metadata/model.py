@@ -70,7 +70,7 @@ def valid_music(track, config):
 
 def resolve(snapshots, config, mode="auto"):
     if mode == "station":
-        return Decision(config.break_message, "estación", "Mensaje de estación activado")
+        return Decision(config.break_message, "estación", "Modo de pausa activado")
     candidates = [t for t in snapshots if t.playing and not t.error]
     conflict = len(candidates) > 1
     if mode != "auto":

@@ -2,11 +2,11 @@
 PLAYER_HTML = r'''<!doctype html>
 <html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mi estación · En vivo</title><style>
-body{margin:0;background:#0d1724;color:#e5edf7;font:16px system-ui;min-height:100vh;display:grid;place-items:center}
-main{width:min(88vw,480px);padding:28px;background:#152235;border-radius:20px;text-align:center}
-img{width:min(75vw,300px);height:300px;object-fit:contain;border-radius:12px;background:#0d1724}
-h1{font-size:22px}h2{font-size:26px;margin-bottom:8px}p{color:#bacbdd}audio{width:100%;margin-top:20px}
-small{display:block;color:#89cbb0;margin-top:14px}img[hidden]{display:none}
+:root{color-scheme:light dark}body{margin:0;background:Canvas;color:CanvasText;font:16px system-ui;min-height:100vh;display:grid;place-items:center}
+main{width:min(88vw,480px);padding:28px;background:Canvas;border:1px solid GrayText;border-radius:4px;text-align:center}
+img{width:min(75vw,300px);height:300px;object-fit:contain;border-radius:2px;background:Canvas}
+h1{font-size:22px}h2{font-size:26px;margin-bottom:8px}p{color:CanvasText}audio{width:100%;margin-top:20px}
+small{display:block;color:CanvasText;margin-top:14px}img[hidden]{display:none}
 </style><main><h1 id="station">Mi estación</h1><img id="cover" alt="Carátula o logo de la estación" hidden>
 <h2 id="title">Conectando…</h2><p id="artist"></p><p id="album"></p><audio id="audio" controls preload="none"></audio>
 <small id="status">Actualizando información</small></main><script>
@@ -17,7 +17,7 @@ function paint(){if(!latest)return;let age=(Date.now()-Date.parse(latest.updated
 let fresh=Number.isFinite(age)&&age>=-60&&age<=latest.stale_seconds;
 let music=fresh&&latest.is_music===true;
 el('station').textContent=latest.station;document.title=latest.station+' · En vivo';
-el('title').textContent=music?latest.title:(fresh?latest.text:latest.idle_message);
+el('title').textContent=music?latest.title:(fresh?(latest.display_message||'Sin información musical'):latest.idle_message);
 el('artist').textContent=music?latest.artist:latest.slogan;el('album').textContent=music?latest.album:'';
 el('status').textContent=fresh?'En vivo · información actualizada':'Información musical no disponible';
 let src=imageUrl(music?(latest.artwork_url||latest.artwork_file):(latest.logo_url||latest.logo_file));

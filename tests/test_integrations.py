@@ -42,7 +42,7 @@ class IntegrationTests(unittest.TestCase):
             raw = json.dumps(original).encode()
             store.path.write_bytes(raw)
             loaded = store.load()
-            self.assertEqual(loaded.version, 2)
+            self.assertEqual(loaded.version, 3)
             self.assertEqual(loaded.priority, 'spotify')
             self.assertFalse(loaded.webdav_enabled)
             self.assertFalse(loaded.azuracast_write_enabled)
@@ -87,8 +87,8 @@ class IntegrationTests(unittest.TestCase):
             future = datetime.fromisoformat(state['updated_at']) + timedelta(seconds=config.stale_seconds + 1)
             stale = live_state(Path(tmp), future)
             self.assertFalse(stale['is_music'])
-            self.assertEqual(stale['artwork_file'], state['logo_file'])
-            self.assertEqual(stale['text'], config.idle_message)
+            self.assertEqual(stale['artwork_file'], '')
+            self.assertEqual(stale['text'], '')
             self.assertEqual(stale['album'], '')
 
     def test_kh_numeric_success_with_rejection_message_is_failure(self):
@@ -136,7 +136,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(set(received[0]), {'artist', 'title'})
             output.send(resolve([], self.config))
             self.assertEqual(received[1]['artist'], [''])
-            self.assertEqual(received[1]['title'], [self.config.idle_message])
+            self.assertEqual(received[1]['title'], [''])
 
     def test_webdav_uploads_assets_before_json_and_does_not_leak_credentials(self):
         config = replace(self.config, webdav_upload_url='https://dav.example/folder', webdav_public_url='https://cdn.example/radio')
@@ -267,7 +267,7 @@ class AdditionalBehaviorTests(unittest.TestCase):
             with patch('radio_metadata.engine.make_sources', return_value=[Delayed()]):
                 decision, _, _, rows = asyncio.run(engine.tick())
             self.assertIsNone(decision.song)
-            self.assertEqual(decision.reason, 'Mensaje de estación activado')
+            self.assertEqual(decision.reason, 'Modo de pausa activado')
             self.assertEqual(rows, [])
             engine.close()
 

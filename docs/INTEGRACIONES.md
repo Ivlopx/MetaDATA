@@ -37,3 +37,7 @@ La sincronía exacta entre texto, audio codificado y reproducción remota no se 
 ## Estado tras la adaptación 0.2
 
 Las funciones implementadas y los límites pendientes están en [Novedades 0.2](NOVEDADES-0.2.md). La búsqueda externa de portadas, AutoDJ, grabaciones y relays siguen siendo ajustes del panel de AzuraCast. No se instalaron plugins ni se modificó la estación durante el desarrollo.
+
+## Cambios de operación 0.3
+
+La interfaz y las claves se describen en [Novedades 0.3](NOVEDADES-0.3.md). En pausas ya no se publica el mensaje de estación como título. El logo se usa como portada de respaldo únicamente para canciones válidas sin imagen, y como identidad visual del reproductor. El historial remoto pertenece a cada servicio; un vaciado no garantiza eliminar entradas ni retirar inmediatamente el último título de todos los clientes.

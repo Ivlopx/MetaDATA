@@ -1,4 +1,6 @@
 """Validated local exports and optional, explicitly configured network outputs."""
+from .credentials import read_secret, secret_id
+
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -29,7 +31,7 @@ def image_type(data):
 
 def xml_state(state):
     root = Writer.Element('PLAYER', name='MetaDATA', version=__version__)
-    fields = {'ARTIST': state['artist'], 'TITLE': state['title'] if state['is_music'] else state['text'],
+    fields = {'CASTTITLE': state['text'] if state['is_music'] else '', 'ARTIST': state['artist'], 'TITLE': state['title'] if state['is_music'] else '',
               'ALBUM': state['album'], 'YEAR': state['year'], 'GENRE': state['genre'],
               'ISRC': state['isrc'], 'SOURCE': state['source'], 'IS_MUSIC': str(state['is_music']).lower(),
               'DURATION_MS': str(state['duration_ms'] or ''), 'ARTWORK': state['artwork_file']}
@@ -64,16 +66,17 @@ class LocalOutput:
         logo_file = self._image(logo)
         song_file = self._image(track.artwork) if track else ''
         state = {
-            'schema_version': 2, 'updated_at': datetime.now(timezone.utc).isoformat(),
-            'stale_seconds': config.stale_seconds, 'text': clean(decision.text),
+            'schema_version': 3, 'updated_at': datetime.now(timezone.utc).isoformat(),
+            'stale_seconds': config.stale_seconds, 'text': clean(decision.text) if track else '',
+            'display_message': '' if track else clean(decision.text),
             'source': decision.source, 'is_music': track is not None, 'conflict': decision.conflict,
             'artist': clean(track.artist) if track else '', 'title': clean(track.title) if track else '',
             'album': clean(track.album) if track else '', 'album_artist': clean(track.album_artist) if track else '',
             'year': clean(track.year) if track else '', 'genre': clean(track.genre) if track else '',
             'isrc': clean(track.isrc) if track else '', 'duration_ms': track.duration_ms if track else None,
             'position_ms': track.position_ms if track else None, 'track_number': track.track_number if track else None,
-            'artwork_file': song_file or logo_file, 'logo_file': logo_file,
-            'artwork_origin': (track.artwork_origin or 'source') if song_file else ('station_logo' if logo_file else ''),
+            'artwork_file': (song_file or logo_file) if track else '', 'logo_file': logo_file,
+            'artwork_origin': (track.artwork_origin or 'source') if song_file else ('station_logo' if track and logo_file else ''),
             'station': config.station_name, 'slogan': config.slogan, 'description': config.description,
             'website': config.website, 'idle_message': config.idle_message, 'stream_url': config.stream_url,
         }
@@ -124,21 +127,22 @@ class RetryingOutput:
 class IcecastOutput(RetryingOutput):
     error_message = 'Error Icecast; comprobar conexión/credenciales (reintentando)'
 
-    def __init__(self, target):
+    def __init__(self, target, credentials=None):
         super().__init__()
         self.target = target
+        self.credentials = credentials
 
     def key(self, decision, state):
-        return decision.text, (state or {}).get('artwork_url', '')
+        return decision.text if decision.song else '', (state or {}).get('artwork_url', '')
 
     def publish(self, decision, state=None):
-        password = os.environ.get(self.target['password_env'], '')
+        password = read_secret(self.credentials, secret_id('icecast', self.target['url'], self.target['mount'], self.target.get('username', 'source')), self.target.get('password_env', ''), managed=self.target.get('managed_password', False))
         if not password:
             raise ValueError('Falta contraseña Icecast')
-        params = {'mount': self.target['mount'], 'mode': 'updinfo', 'song': decision.text, 'charset': 'UTF-8'}
+        params = {'mount': self.target['mount'], 'mode': 'updinfo', 'song': decision.text if decision.song else '', 'charset': 'UTF-8'}
         if self.target.get('send_artwork_url'):
             # Empty URL deliberately clears the old song artwork during a break.
-            params['url'] = (state or {}).get('artwork_url', '')
+            params['url'] = (state or {}).get('artwork_url', '') if decision.song else ''
         with httpx.Client(timeout=3, follow_redirects=False, trust_env=False) as client:
             response = client.get(self.target['url'].rstrip('/') + '/admin/metadata', params=params,
                                   auth=(self.target.get('username', 'source'), password))
@@ -153,7 +157,7 @@ class IcecastOutput(RetryingOutput):
             if self.target.get('verify_url'):
                 from .remote import read_json, icecast_state, same_text
                 observed = icecast_state(read_json(client, self.target['verify_url']), self.target['mount'])
-                if not observed['online'] or not same_text(observed['text'], decision.text):
+                if not observed['online'] or not same_text(observed['text'], decision.text if decision.song else ''):
                     raise ValueError('Lectura remota no coincide')
                 if self.target.get('send_artwork_url') and observed.get('artwork_url', '') != params['url']:
                     raise ValueError('La URL de carátula remota no coincide')
@@ -164,17 +168,18 @@ class IcecastOutput(RetryingOutput):
 class AzuraCastOutput(RetryingOutput):
     error_message = 'Error de publicación AzuraCast; comprobar permisos y conexión (reintentando)'
 
-    def __init__(self, config):
+    def __init__(self, config, credentials=None):
         super().__init__()
         self.config = config
+        self.credentials = credentials
 
     def publish(self, decision, state=None):
-        token = os.environ.get(self.config.azuracast_key_env, '')
+        token = read_secret(self.credentials, secret_id('azuracast', self.config.azuracast_url), self.config.azuracast_key_env, managed=secret_id('azuracast', self.config.azuracast_url) in self.config.managed_credentials)
         if not token:
             raise ValueError('Falta clave API AzuraCast')
         # Restrict to supported, editorial fields; never forward album, art, media_id or liq_*.
         payload = {'artist': clean(decision.song.artist) if decision.song else '',
-                   'title': clean(decision.song.title) if decision.song else clean(decision.text)}
+                   'title': clean(decision.song.title) if decision.song else ''}
         url = f'{self.config.azuracast_url.rstrip("/")}/api/station/{self.config.azuracast_station}/nowplaying/update'
         with httpx.Client(timeout=3, follow_redirects=False, trust_env=False) as client:
             response = client.post(url, data=payload, headers={'X-API-Key': token})
@@ -188,9 +193,10 @@ class WebDavOutput(RetryingOutput):
     """Upload exact assets to an existing HTTPS WebDAV folder; JSON is committed last."""
     error_message = 'Error de alojamiento; carátula nueva sin publicar (reintentando)'
 
-    def __init__(self, config, directory):
+    def __init__(self, config, directory, credentials=None):
         super().__init__()
         self.config, self.directory = config, directory
+        self.credentials = credentials
         self.uploaded_images = set()
         self.artwork_url = ''
         self.player_uploaded = False
@@ -209,7 +215,7 @@ class WebDavOutput(RetryingOutput):
         return super().send(decision, state)
 
     def publish(self, decision, state):
-        password = os.environ.get(self.config.webdav_password_env, '')
+        password = read_secret(self.credentials, secret_id('webdav', self.config.webdav_upload_url, self.config.webdav_username), self.config.webdav_password_env, managed=secret_id('webdav', self.config.webdav_upload_url, self.config.webdav_username) in self.config.managed_credentials)
         if not password:
             raise ValueError('Falta contraseña WebDAV')
         upload = self.config.webdav_upload_url.rstrip('/')

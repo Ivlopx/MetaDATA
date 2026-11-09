@@ -18,14 +18,14 @@ def main():
     logging.getLogger("radio_metadata").addHandler(handler)
     logging.getLogger("radio_metadata").setLevel(logging.INFO)
 
-    from PySide6.QtCore import QLockFile
+    from PySide6.QtCore import QLockFile, QThread
     from PySide6.QtWidgets import QApplication, QMessageBox
     from .config import ConfigStore
-    from .gui import MainWindow, STYLE
+    from .gui import MainWindow
+    from .appearance import apply_appearance
 
     app = QApplication(sys.argv[:1])
     app.setApplicationName("Radio Metadata Manager")
-    app.setStyleSheet(STYLE)
     lock = QLockFile(str(directory / "app.lock"))
     if not lock.tryLock(0):
         QMessageBox.information(None, "Radio Metadata", "Ya existe una instancia usando esta carpeta de datos.")
@@ -36,11 +36,14 @@ def main():
     except (ValueError, TypeError, OSError) as error:
         QMessageBox.critical(None, "Configuración inválida", f"No se inició la aplicación ({type(error).__name__}). Revisa {store.path}. No se sobrescribió tu configuración.")
         return 1
+    apply_appearance(app, config.theme)
     window = MainWindow(store, config, args.demo)
     # Windows logout / OS quit also shut down the worker.
     def shutdown():
         window.worker.stop()
         window.worker.wait()
+        for checker in window.findChildren(QThread):
+            checker.wait()
     app.aboutToQuit.connect(shutdown)
     window.show()
     return app.exec()

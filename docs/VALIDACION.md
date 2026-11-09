@@ -1,4 +1,17 @@
-# Validación de entrega 0.2
+# Validación de entrega 0.3
+
+## Entrega actual
+
+Se aprobaron **46 pruebas** en macOS con Python 3.11 y PySide6 6.12.0. Se añadieron pruebas de claves separadas del JSON, lectura de claves guardadas por los conectores, prioridad sobre el entorno antiguo y borrado efectivo, separación por perfil/dirección, compensación ante fallos de guardado, migración v2, edición y cancelación en la interfaz, cuatro pantallas, cambio de tema y exportación de más de 200 filas de historial.
+
+También se comprueba el vaciado de TXT/XML/JSON y salidas Icecast/AzuraCast durante pausas, con logo y mensaje separados de la canción; el respaldo de logo para canciones válidas sin portada; y el campo CASTTITLE del XML, formado durante canciones y vacío durante pausas. Las pruebas de conexiones usan GET/PROPFIND simulados, sin publicaciones. El reproductor se ejecutó en Node con un DOM simulado para canción, mensaje visual, logo y caducidad.
+
+La interfaz se inspeccionó con capturas en modo offscreen y controles Fusion; esto no acredita la apariencia nativa en Windows. La versión 0.3 se construye como paquete Python. No se modificaron títulos, imágenes, ajustes ni bases de datos de la estación real.
+
+El almacén Windows se prueba mediante un backend simulado, no con CredWrite nativo en este entorno. Quedan pendientes en Windows 11: persistencia entre arranques/EXE con el mismo usuario/perfil, mostrar/borrar claves, seguimiento del tema del sistema, bandeja, lectores nativos y tratamiento de XML/título vacío por RadioCaster. Icecast y AzuraCast requieren verificar el vaciado remoto y sus propios datos de respaldo; no se garantiza controlar el historial externo.
+
+## Validación histórica 0.2
+
 
 Fecha: 9 de noviembre de 2026. Entorno: macOS, Python 3.11, PySide6 6.12.0, httpx 0.28.1 y defusedxml 0.7.1 en un entorno aislado.
 

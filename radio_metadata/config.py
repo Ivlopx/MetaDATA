@@ -22,7 +22,9 @@ def atomic_write(path: Path, data: bytes):
 
 @dataclass
 class Config:
-    version: int = 2
+    version: int = 3
+    theme: str = "system"
+    managed_credentials: list[str] = field(default_factory=list)
     station_name: str = "Mi estación"
     slogan: str = "Tu música, tu compañía"
     description: str = ""
@@ -70,8 +72,12 @@ class Config:
         for key in self.__dataclass_fields__:
             if type(getattr(self, key)) is not type(getattr(defaults, key)):
                 raise ValueError(f"Tipo inválido para {key}")
-        if self.version != 2:
+        if not all(isinstance(key, str) and key for key in self.managed_credentials):
+            raise ValueError("Referencias de credenciales inválidas")
+        if self.version != 3:
             raise ValueError("Versión de configuración no compatible")
+        if self.theme not in ("system", "light", "dark"):
+            raise ValueError("Tema inválido")
         if type(self.poll_seconds) is not int or not 1 <= self.poll_seconds <= 30:
             raise ValueError("El intervalo debe estar entre 1 y 30 segundos")
         if self.priority not in ("radioboss", "spotify"):
@@ -91,11 +97,11 @@ class Config:
                 self._url(value)
                 if urlsplit(value).scheme != "https":
                     raise ValueError("El alojamiento de imágenes requiere HTTPS")
-        if self.webdav_enabled and not all((self.webdav_upload_url, self.webdav_public_url, self.webdav_password_env)):
-            raise ValueError("Completa URL WebDAV, URL pública y variable de contraseña")
+        if self.webdav_enabled and not all((self.webdav_upload_url, self.webdav_public_url)):
+            raise ValueError("Completa URL WebDAV y URL pública")
         for key in ("radioboss_password_env", "azuracast_key_env", "webdav_password_env"):
             value = getattr(self, key)
-            if not value or not all(c.isalnum() or c == "_" for c in value):
+            if value and not all(c.isalnum() or c == "_" for c in value):
                 raise ValueError(f"{key}: escribe el nombre de una variable de entorno")
         for key in ("music_folders", "excluded_folders", "excluded_terms", "excluded_types"):
             value = getattr(self, key)
@@ -108,11 +114,13 @@ class Config:
         if not self.spotify_app_id_contains.strip():
             raise ValueError("El identificador de Spotify no puede estar vacío")
         for target in self.icecast_targets:
-            if not isinstance(target, dict) or set(target) - {"name", "url", "mount", "username", "password_env", "enabled", "send_artwork_url", "verify_url"}:
+            if not isinstance(target, dict) or set(target) - {"name", "url", "mount", "username", "password_env", "enabled", "send_artwork_url", "verify_url", "managed_password"}:
                 raise ValueError("Destino Icecast inválido")
             for key in ("name", "url", "mount", "username", "password_env", "verify_url"):
                 if key in target and not isinstance(target[key], str):
                     raise ValueError(f"Icecast {key} debe ser texto")
+            if "managed_password" in target and type(target["managed_password"]) is not bool:
+                raise ValueError("managed_password debe ser booleano")
             if "enabled" in target and type(target["enabled"]) is not bool:
                 raise ValueError("Icecast enabled debe ser booleano")
             if "send_artwork_url" in target and type(target["send_artwork_url"]) is not bool:
@@ -122,8 +130,8 @@ class Config:
             if target.get("send_artwork_url") and not self.webdav_enabled:
                 raise ValueError("Para enviar StreamUrl activa primero el alojamiento de imágenes")
             self._url(target.get("url", ""))
-            if not target.get("mount", "").startswith("/") or not target.get("password_env"):
-                raise ValueError("Icecast requiere mount /… y nombre de variable para contraseña")
+            if not target.get("mount", "").startswith("/"):
+                raise ValueError("Icecast requiere un mount que comience por /")
         if self.azuracast_write_enabled and any(t.get("enabled", False) for t in self.icecast_targets):
             raise ValueError("Elige publicación directa Icecast o AzuraCast para evitar escritores simultáneos")
 
@@ -147,14 +155,15 @@ class ConfigStore:
         values = json.loads(self.path.read_text(encoding="utf-8"))
         if not isinstance(values, dict):
             raise ValueError("La configuración debe ser un objeto JSON")
-        migrate = values.get("version", 1) == 1
+        old_version = values.get("version", 1)
+        migrate = old_version in (1, 2)
         if migrate:
             original = self.path.read_bytes()
-            values["version"] = 2
+            values["version"] = 3
         config = Config(**values)
         config.validate()
         if migrate:
-            backup = self.directory / "config.v1.backup.json"
+            backup = self.directory / f"config.v{old_version}.backup.json"
             if not backup.exists():
                 atomic_write(backup, original)
             self.save(config)

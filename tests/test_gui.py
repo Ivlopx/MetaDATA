@@ -56,4 +56,75 @@ class GuiTests(unittest.TestCase):
                 window.quit()
             self.assertFalse(window.worker.isRunning())
             text = (Path(tmp) / "demo-output" / "nowplaying.txt").read_text()
-            self.assertEqual(text.strip(), config.idle_message)
+            self.assertEqual(text.strip(), "")
+
+    def test_four_pages_and_secure_settings_save_cancel_and_export(self):
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QApplication, QLineEdit, QDialog
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow, SettingsDialog
+        from radio_metadata.credentials import MemoryCredentials, secret_id
+        from radio_metadata.appearance import apply_appearance
+        from radio_metadata.storage import History
+        from radio_metadata.model import resolve, Snapshot
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            config = store.load()
+            vault = MemoryCredentials()
+            dialog = SettingsDialog(config, store=store, credentials=vault)
+            secret = dialog.secrets['radioboss']
+            self.assertEqual(secret.edit.echoMode(), QLineEdit.EchoMode.Password)
+            secret.edit.setText('private-test-key')
+            secret.mark_changed()
+            secret.show_button.setChecked(True)
+            self.assertEqual(secret.edit.echoMode(), QLineEdit.EchoMode.Normal)
+            secret.show_button.setChecked(False)
+            dialog.fields['theme'].setCurrentIndex(2)
+            dialog.save()
+            self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
+            key = secret_id('radioboss', config.radioboss_url, config.radioboss_user)
+            self.assertEqual(vault.get(key), 'private-test-key')
+            self.assertIn(key, store.load().managed_credentials)
+            self.assertNotIn('private-test-key', store.path.read_text())
+            cancelled = SettingsDialog(store.load(), store=store, credentials=vault)
+            cancelled.secrets['radioboss'].clear_secret()
+            cancelled.reject()
+            self.assertEqual(vault.get(key), 'private-test-key')
+            cleared = SettingsDialog(store.load(), store=store, credentials=vault)
+            cleared.secrets['radioboss'].clear_secret()
+            cleared.save()
+            self.assertEqual(vault.get(key), '')
+            moved = SettingsDialog(store.load(), store=store, credentials=vault)
+            moved.fields['radioboss_url'].setText('http://127.0.0.1:9002/')
+            moved.save()
+            moved_key = secret_id('radioboss', 'http://127.0.0.1:9002/', config.radioboss_user)
+            self.assertIn(moved_key, store.load().managed_credentials)
+            for theme in ('light', 'dark', 'system'):
+                apply_appearance(app, theme)
+                self.assertEqual(app.styleSheet(), '')
+            config = store.load()
+            window = MainWindow(store, config, demo=True)
+            try:
+                self.assertEqual([window.tabs.tabText(i) for i in range(4)], ['Inicio', 'Historial', 'Conexiones', 'Ajustes'])
+                window.worker.stop()
+                window.worker.wait()
+                history = History(Path(tmp) / 'demo-history.sqlite3')
+                for i in range(205):
+                    history.record(resolve([Snapshot('spotify', True, 'Artista', f'Canción {i}', kind='music')], __import__('dataclasses').replace(config, spotify_publish=True)))
+                history.close()
+                path = Path(tmp) / 'history.csv'
+                with patch('radio_metadata.gui.QFileDialog.getSaveFileName', return_value=(str(path), 'CSV (*.csv)')):
+                    window.export_history()
+                import csv
+                with path.open(encoding='utf-8-sig') as stream:
+                    rows = list(csv.reader(stream))
+                self.assertGreaterEqual(len(rows), 206)
+                self.assertEqual(rows[0][0], 'Fecha y hora')
+                self.assertEqual(rows[1][3], 'Canción 204')
+                window.toggle_station()
+                self.assertEqual(window.mode.currentData(), 'station')
+                window.toggle_station()
+                self.assertEqual(window.mode.currentData(), 'auto')
+            finally:
+                window.quit()

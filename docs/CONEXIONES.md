@@ -7,15 +7,15 @@ La demo y la interfaz no necesitan credenciales reales. Para la primera prueba e
 3. Nombre, eslogan, web, descripción, mensajes y archivo de logo.
 4. El proveedor secundario es **Zeno.fm**, confirmado por el usuario. Para conectar, utilizar el servidor y mount específicos que indique su panel.
 5. Para la ruta recomendada, confirmar que los dos encoders ya conectan desde RadioCaster. No hacen falta sus claves dentro de esta app.
-6. Solo si se elige escritura Icecast directa: URL base, mount exacto, nombre de usuario y qué variable de entorno local tendrá la contraseña. Para AzuraCast, confirmar primero que se trata de un endpoint Icecast administrativo autorizado y no de su entrada Liquidsoap DJ.
+6. Solo si se elige escritura Icecast directa: URL base, mount exacto, nombre de usuario y contraseña introducida en su formulario de la app. Para AzuraCast, confirmar primero que se trata de un endpoint Icecast administrativo autorizado y no de su entrada Liquidsoap DJ.
 
-Introduce las claves en tu propia PC mediante variables de entorno. No las pegues en el repositorio ni en mensajes. RadioBOSS requiere contraseña en el query según su protocolo: usa localhost o HTTPS para acceso remoto. El proyecto no registra URLs ni mensajes de excepción de red que puedan incluirla. Los logs omiten títulos de anuncios y credenciales.
+Introduce las claves en Conexiones o Ajustes; Guardar las conserva en el almacén de credenciales de Windows. No necesitas variables de entorno. No las pegues en el repositorio ni en mensajes. RadioBOSS requiere contraseña en el query según su protocolo: usa localhost o HTTPS para acceso remoto. El proyecto no registra URLs ni mensajes de excepción de red que puedan incluirla. Los logs omiten títulos de anuncios y credenciales.
 
 ## Ruta recomendada
 
 ```text
 RadioBOSS API ───────────────┐
-                            ├─ selección → filtros → nowplaying.txt → RadioCaster
+                            ├─ selección → filtros → nowplaying.xml → RadioCaster
 Spotify / Windows SMTC ─────┘                              ├─ AzuraCast
                                                            └─ destino secundario
 
@@ -26,7 +26,7 @@ El JSON incluye nombre/eslogan/descripción/web para un futuro reproductor propi
 
 ## Icecast directo opcional
 
-Se configura en Ajustes → Salidas, como lista JSON. Empieza desactivado y reemplaza los valores de ejemplo:
+Se configura en Ajustes → Icecast directo → Agregar. Escribe nombre, servidor, mount, usuario y contraseña. Empieza desactivado. El siguiente JSON muestra la estructura interna de referencia, no es necesario editarlo desde la app:
 
 ```json
 [
@@ -36,12 +36,12 @@ Se configura en Ajustes → Salidas, como lista JSON. Empieza desactivado y reem
     "url": "https://radio.example.org:8443",
     "mount": "/live.mp3",
     "username": "source",
-    "password_env": "RADIO_ICECAST_PASSWORD"
+    "managed_password": true
   }
 ]
 ```
 
-Define `$env:RADIO_ICECAST_PASSWORD` antes de iniciar la app. Usa HTTPS si está disponible; las credenciales Basic Auth sobre HTTP no se cifran. El servidor debe autorizar la actualización y tener el mount activo. La app comprueba la respuesta HTTP, `<return>1</return>` y un mensaje explícito de éxito de Icecast; una respuesta distinta se trata como error y se reintenta con espera creciente de hasta 60 segundos. Un cambio de título se envía sin esperar el refresco normal de 30 segundos, salvo que haya un error pendiente. Cada destino conserva su estado de reintento.
+Guarda la contraseña en el formulario del destino. Usa HTTPS si está disponible; las credenciales Basic Auth sobre HTTP no se cifran. El servidor debe autorizar la actualización y tener el mount activo. La app comprueba la respuesta HTTP, `<return>1</return>` y un mensaje explícito de éxito de Icecast; una respuesta distinta se trata como error y se reintenta con espera creciente de hasta 60 segundos. Un cambio de título se envía sin esperar el refresco normal de 30 segundos, salvo que haya un error pendiente. Cada destino conserva su estado de reintento.
 
 Si RadioCaster sigue enviando sus propios metadatos al mismo mount podría sobrescribir los de la app. Elige un solo escritor por destino. No actives esta opción por suposición para Zeno ni para el puerto de DJ de AzuraCast; utiliza primero la salida por RadioCaster.
 
@@ -49,11 +49,11 @@ Si RadioCaster sigue enviando sus propios metadatos al mismo mount podría sobre
 
 - Prueba fuera de emisión o en mount de prueba. Verifica acentos, guiones y cambios completos de canción.
 - Reproduce una canción RadioBOSS de carpeta aprobada: confirmar título y carátula local si está etiquetada.
-- Pausa RadioBOSS y reproduce Spotify: revisar sesión y estado local. Si solo se observa, debe seguir el mensaje de estación.
+- Pausa RadioBOSS y reproduce Spotify: revisar sesión y estado local. Si solo se observa, los campos de canción deben quedar vacíos.
 - Prueba ambas fuentes y cada prioridad; después pausa la fuente elegida manualmente. No debe saltar a la otra en modo manual.
-- Activa Mensaje de estación **antes** de un bloque; confirma título remoto. Prueba además anuncios con artista/título y tipo Commercial: deben quedar fuera de archivo e historial.
+- Activa Pausar metadatos **antes** de un bloque; confirma el vaciado remoto y que no se publique una pista con el nombre de la estación. Prueba además anuncios con artista/título y tipo Commercial: deben quedar fuera de archivo e historial.
 - Pausa ambas, corta la API, restaura conexión y cierra/restaura la ventana. Verifica que el programa en bandeja siga trabajando.
-- Cierra mediante Salir y confirma mensaje de estación. Si el proceso se mata o Windows corta energía, no hay garantía de limpieza del último título.
+- Cierra mediante Salir y confirma los campos musicales vacíos. Si el proceso se mata o Windows corta energía, no hay garantía de limpieza del último título.
 - Comprueba por separado el audio retornado por USB y los dos destinos remotos. Medir retardo de metadatos frente al audio; esta versión no lo compensa.
 
 ## Opciones nuevas en MetaDATA 0.2
@@ -71,7 +71,7 @@ La pestaña «Lo que reciben los servidores» compara la última consulta con la
 
 ### 2. Vista local y lectura por URL
 
-En Ajustes → Carátulas y reproductor activa la vista local. Por defecto utiliza:
+En Ajustes → Carátulas activa la vista local. Por defecto utiliza:
 
 ```text
 http://127.0.0.1:12882/player.html
@@ -82,17 +82,13 @@ http://127.0.0.1:12882/nowplaying.xml
 
 En RadioCaster puedes seguir leyendo el archivo o usar «Read from URL» con la URL TXT. Si el servicio se cierra, RadioCaster puede conservar el último texto recibido: compruébalo. No se abre un puerto para Internet ni se configura el router. El reproductor requiere una acción del usuario para escuchar el audio.
 
-Para leer el XML en RadioCaster con primera versión de salida textual, usa `{TRACK[TITLE]}`: en una canción solo mostrará el título. Para conservar el texto combinado y el mensaje de estación sin separadores vacíos, usa TXT. Los atributos del XML están disponibles para plantillas, pero no se presupone que el servidor los reciba como campos independientes.
+Para leer el XML en RadioCaster con primera versión de salida textual, usa `{TRACK[TITLE]}`: en una canción solo mostrará el título. Para conservar artista y título combinados y vaciar durante pausas, usa `{TRACK[CASTTITLE]}` con Read from XML file; TXT también está disponible. En 0.3 los campos musicales del XML quedan vacíos sin canción. Los atributos del XML están disponibles para plantillas, pero no se presupone que el servidor los reciba como campos independientes.
 
 ### 3. Carátula exacta en Internet mediante alojamiento compatible
 
 Se necesita una **carpeta WebDAV existente por HTTPS**, con permisos de PUT, y una **URL pública** desde la cual se puedan consultar los archivos subidos. Una instalación Nextcloud privada o el dominio de AzuraCast por sí solos no garantizan esas dos condiciones. La carpeta de destino debe existir; la app no crea cuentas ni carpetas remotas.
 
-Configura ambos destinos en Ajustes → Carátulas y reproductor. Define antes de iniciar:
-
-```powershell
-$env:METADATA_WEBDAV_PASSWORD = 'tu contraseña de aplicación del alojamiento'
-```
+Configura ambos destinos y la contraseña del alojamiento en Ajustes → Carátulas. Pulsa Probar conexión y Guarda. La prueba consulta la carpeta y no sube archivos; confirma aparte sus permisos de escritura y lectura pública.
 
 La app sube `player.html`, `nowplaying.json`, `nowplaying.txt` e imágenes PNG/JPEG/WebP de hasta 4 MB. El JSON no incluye rutas locales ni anuncios excluidos. Abre la URL pública `/player.html` para ver la canción. El álbum se conserva en JSON, no se añade al título de radio. Configura en el alojamiento que JSON no se almacene en caché de larga duración; las imágenes llevan nombres diferentes por contenido. El envío mantiene el JSON actualizado aproximadamente cada 10 segundos; el reproductor oculta la música si supera su caducidad configurada.
 
@@ -112,7 +108,7 @@ Después de verificar la publicación de imágenes, un destino directo puede inc
     "url": "https://orofm.live:8000",
     "mount": "/vocesdetepezala/orofm/stream.mp3",
     "username": "source",
-    "password_env": "RADIO_ICECAST_PASSWORD",
+    "managed_password": true,
     "send_artwork_url": true,
     "verify_url": "https://orofm.live:8000/status-json.xsl"
   }
@@ -125,16 +121,20 @@ Una respuesta KH debe indicar éxito en código y mensaje. Si está configurado 
 
 ### 5. Actualización textual directa en AzuraCast
 
-Alternativa al título enviado por RadioCaster: habilitar «Publicar artista y título directamente por AzuraCast», con clave de una cuenta autorizada para Broadcasting. Define localmente:
+Alternativa al título enviado por RadioCaster: habilitar «Publicar artista y título directamente por AzuraCast», con clave de una cuenta autorizada para Broadcasting. Introduce y guarda la clave en Conexiones → AzuraCast → Configurar. La prueba comprueba lectura, sin publicar títulos.
 
-```powershell
-$env:AZURACAST_API_KEY = 'tu clave API local'
-```
-
-Se usa POST a `/api/station/2/nowplaying/update`, con `artist`/`title` únicamente y la clave en cabecera. No se envían álbum, imagen, duración artificial ni referencias a archivos de la biblioteca. Las canciones excluidas envían artista vacío y mensaje de estación como título. El panel puede confirmar recepción antes de que el cambio aparezca públicamente; el monitor muestra el resultado después.
+Se usa POST a `/api/station/2/nowplaying/update`, con `artist`/`title` únicamente y la clave en cabecera. No se envían álbum, imagen, duración artificial ni referencias a archivos de la biblioteca. Las canciones excluidas envían artista y título vacíos, sin nombre ni eslogan de la estación. El panel puede confirmar recepción antes de que el cambio aparezca públicamente; el monitor muestra el resultado después.
 
 La app impide activar simultáneamente su escritura Icecast y su escritura AzuraCast. También debes elegir quién envía títulos desde RadioCaster; la app no puede desactivar ese ajuste por ti. Verifica en una estación de prueba antes de usar una ruta nueva.
 
 ### 6. Funciones que se configuran en los programas originales
 
 La búsqueda de carátulas se activa con permisos de administrador en los servicios de AzuraCast. AutoDJ de respaldo, grabaciones, varias calidades y relay secundario siguen en su panel. El programador y la captura USB siguen en RadioCaster. La adaptación no instala componentes del servidor ni cambia tu transmisión actual.
+
+## Cambio de comportamiento 0.3
+
+Los campos de canción se vacían en pausas; el logo no se publica como una pista. Una canción real sin carátula puede usar el logo configurado como imagen de respaldo. En AzuraCast, el logo por defecto sigue siendo el configurado en su panel: la API de títulos no carga imágenes. La documentación de RadioCaster no garantiza el vaciado al leer una línea vacía; comprueba esa transición en el estudio. Si el encoder ignora el vacío, conservará el título anterior; no sustituyas el vacío por una canción ficticia. Evalúa una única salida directa autorizada y verifica su lectura remota antes de cambiar la ruta en producción. Los historiales de AzuraCast y de terceros se controlan en esos servicios.
+
+## Entrada XML preparada para RadioCaster
+
+Selecciona `output/nowplaying.xml` en Read from XML file y usa `{TRACK[CASTTITLE]}` en Title Format. CASTTITLE contiene Artista - Canción únicamente durante música válida, y queda vacío en pausas. ARTIST, TITLE, ALBUM y demás atributos se conservan por separado. Evita una plantilla con guion fijo entre dos atributos vacíos. Esto formatea el texto que envía RadioCaster; no convierte álbum o imagen en metadatos adicionales del stream. Read from URL está documentado como lectura de texto; no se presupone un lector JSON ni XML remoto. La entrada XML real y el tratamiento del título vacío se deben verificar en Windows/RadioCaster.

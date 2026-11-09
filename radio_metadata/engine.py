@@ -3,6 +3,7 @@ import logging
 import re
 from dataclasses import replace
 
+from .credentials import WindowsCredentials, MemoryCredentials
 from .model import Snapshot, resolve
 from .outputs import AzuraCastOutput, IcecastOutput, LocalOutput, WebDavOutput
 from .remote import RemoteMonitor
@@ -13,8 +14,9 @@ log = logging.getLogger(__name__)
 
 
 class Engine:
-    def __init__(self, config, directory, demo=False):
+    def __init__(self, config, directory, demo=False, credentials=None):
         self.directory, self.demo = directory, demo
+        self.credentials = credentials if credentials is not None else (MemoryCredentials() if demo else WindowsCredentials(directory))
         self.scenario, self.mode = 'radioboss', 'auto'
         self.mode_provider = None
         self.history = History(directory / ('demo-history.sqlite3' if demo else 'history.sqlite3'))
@@ -28,10 +30,10 @@ class Engine:
     def configure(self, config):
         config.validate()
         self.config = config
-        self.outputs = [] if self.demo else [IcecastOutput(t) for t in config.icecast_targets if t.get('enabled', False)]
+        self.outputs = [] if self.demo else [IcecastOutput(t, self.credentials) for t in config.icecast_targets if t.get('enabled', False)]
         if config.azuracast_write_enabled and not self.demo:
-            self.outputs.append(AzuraCastOutput(config))
-        self.webdav = WebDavOutput(config, self.local.directory) if config.webdav_enabled and not self.demo else None
+            self.outputs.append(AzuraCastOutput(config, self.credentials))
+        self.webdav = WebDavOutput(config, self.local.directory, self.credentials) if config.webdav_enabled and not self.demo else None
         self.monitor = RemoteMonitor(config) if config.remote_monitor_enabled and not self.demo else None
         self.remote_records = []
         if self.server:
@@ -74,7 +76,7 @@ class Engine:
                     return Snapshot(source.name, error=f'Falta el componente {error.name}. Cierra la app y vuelve a ejecutar instalar.bat.')
                 return Snapshot(source.name, error=f'No disponible ({type(error).__name__}); comprobar ajustes')
         mode = self.mode_provider() if self.mode_provider else self.mode
-        sources = [] if mode == 'station' else make_sources(self.config, self.demo, self.scenario)
+        sources = [] if mode == 'station' else make_sources(self.config, self.demo, self.scenario, credentials=self.credentials)
         snapshots = await asyncio.gather(*(poll(s) for s in sources))
         effective = replace(self.config, music_folders=[r'C:\Musica'], spotify_publish=True) if self.demo else self.config
         # Honor an operator override that arrived while a source request was in flight.
@@ -88,7 +90,7 @@ class Engine:
             errors.append('No se pudo guardar el historial')
         statuses = await self.publish(decision)
         if self.monitor:
-            self.remote_records = await asyncio.to_thread(self.monitor.poll, decision.text)
+            self.remote_records = await asyncio.to_thread(self.monitor.poll, decision.text if decision.song else '')
         if self.last_state != (decision.source, decision.reason, decision.conflict):
             log.info('Selección: %s; %s; conflicto=%s', decision.source, decision.reason, decision.conflict)
             self.last_state = decision.source, decision.reason, decision.conflict
