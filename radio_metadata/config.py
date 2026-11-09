@@ -1,0 +1,165 @@
+from dataclasses import asdict, dataclass, field
+import json
+import os
+from pathlib import Path
+import tempfile
+from urllib.parse import urlsplit
+
+
+def atomic_write(path: Path, data: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(dir=path.parent, prefix=".radio-")
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+@dataclass
+class Config:
+    version: int = 2
+    station_name: str = "Mi estación"
+    slogan: str = "Tu música, tu compañía"
+    description: str = ""
+    website: str = ""
+    idle_message: str = "Mi estación • Tu música, tu compañía"
+    break_message: str = "Mi estación • En un momento, más música"
+    logo_path: str = ""
+    poll_seconds: int = 2
+    priority: str = "radioboss"
+    radioboss_enabled: bool = False
+    radioboss_url: str = "http://127.0.0.1:9001/"
+    radioboss_user: str = ""
+    radioboss_password_env: str = "RADIOBOSS_PASSWORD"
+    spotify_enabled: bool = True
+    spotify_app_id_contains: str = "spotify"
+    spotify_publish: bool = False
+    music_folders: list[str] = field(default_factory=list)
+    excluded_folders: list[str] = field(default_factory=list)
+    excluded_terms: list[str] = field(default_factory=lambda: [
+        "anuncio", "publicidad", "commercial", "advertisement", "promo", "jingle", "spot"])
+    excluded_types: list[str] = field(default_factory=lambda: [
+        "commercial", "advertisement", "promo", "jingle", "advert", "sweep", "voice"])
+    # Optional direct Icecast outputs; RadioCaster's file is the recommended route.
+    icecast_targets: list[dict] = field(default_factory=list)
+    azuracast_url: str = "https://orofm.live"
+    azuracast_station: str = "2"
+    remote_monitor_enabled: bool = False
+    remote_poll_seconds: int = 10
+    icecast_monitor_url: str = "https://orofm.live:8000"
+    icecast_monitor_mount: str = "/vocesdetepezala/orofm/stream.mp3"
+    azuracast_write_enabled: bool = False
+    azuracast_key_env: str = "AZURACAST_API_KEY"
+    stream_url: str = "https://orofm.live:8000/vocesdetepezala/orofm/stream.mp3"
+    local_server_enabled: bool = False
+    local_server_port: int = 12882
+    stale_seconds: int = 30
+    webdav_enabled: bool = False
+    webdav_upload_url: str = ""
+    webdav_public_url: str = ""
+    webdav_username: str = ""
+    webdav_password_env: str = "METADATA_WEBDAV_PASSWORD"
+
+    def validate(self):
+        defaults = Config()
+        for key in self.__dataclass_fields__:
+            if type(getattr(self, key)) is not type(getattr(defaults, key)):
+                raise ValueError(f"Tipo inválido para {key}")
+        if self.version != 2:
+            raise ValueError("Versión de configuración no compatible")
+        if type(self.poll_seconds) is not int or not 1 <= self.poll_seconds <= 30:
+            raise ValueError("El intervalo debe estar entre 1 y 30 segundos")
+        if self.priority not in ("radioboss", "spotify"):
+            raise ValueError("Prioridad inválida")
+        for key, low, high in (("remote_poll_seconds", 5, 300), ("local_server_port", 1024, 65535), ("stale_seconds", 15, 300)):
+            if not low <= getattr(self, key) <= high:
+                raise ValueError(f"{key}: valor permitido entre {low} y {high}")
+        self._url(self.azuracast_url)
+        self._url(self.icecast_monitor_url)
+        self._url(self.stream_url)
+        if not self.azuracast_station or not all(c.isalnum() or c in "_-" for c in self.azuracast_station):
+            raise ValueError("Identificador de estación inválido")
+        if self.azuracast_write_enabled and urlsplit(self.azuracast_url).scheme != "https":
+            raise ValueError("La publicación autenticada AzuraCast requiere HTTPS")
+        for value in (self.webdav_upload_url, self.webdav_public_url):
+            if value:
+                self._url(value)
+                if urlsplit(value).scheme != "https":
+                    raise ValueError("El alojamiento de imágenes requiere HTTPS")
+        if self.webdav_enabled and not all((self.webdav_upload_url, self.webdav_public_url, self.webdav_password_env)):
+            raise ValueError("Completa URL WebDAV, URL pública y variable de contraseña")
+        for key in ("radioboss_password_env", "azuracast_key_env", "webdav_password_env"):
+            value = getattr(self, key)
+            if not value or not all(c.isalnum() or c == "_" for c in value):
+                raise ValueError(f"{key}: escribe el nombre de una variable de entorno")
+        for key in ("music_folders", "excluded_folders", "excluded_terms", "excluded_types"):
+            value = getattr(self, key)
+            if not isinstance(value, list) or not all(isinstance(x, str) and x.strip() for x in value):
+                raise ValueError(f"{key}: usa una lista de textos no vacíos")
+        for key in ("station_name", "idle_message", "break_message"):
+            if not getattr(self, key).strip() or any(ord(c) < 32 for c in getattr(self, key)):
+                raise ValueError(f"{key}: escribe una sola línea no vacía")
+        self._url(self.radioboss_url)
+        if not self.spotify_app_id_contains.strip():
+            raise ValueError("El identificador de Spotify no puede estar vacío")
+        for target in self.icecast_targets:
+            if not isinstance(target, dict) or set(target) - {"name", "url", "mount", "username", "password_env", "enabled", "send_artwork_url", "verify_url"}:
+                raise ValueError("Destino Icecast inválido")
+            for key in ("name", "url", "mount", "username", "password_env", "verify_url"):
+                if key in target and not isinstance(target[key], str):
+                    raise ValueError(f"Icecast {key} debe ser texto")
+            if "enabled" in target and type(target["enabled"]) is not bool:
+                raise ValueError("Icecast enabled debe ser booleano")
+            if "send_artwork_url" in target and type(target["send_artwork_url"]) is not bool:
+                raise ValueError("send_artwork_url debe ser booleano")
+            if target.get("verify_url"):
+                self._url(target["verify_url"])
+            if target.get("send_artwork_url") and not self.webdav_enabled:
+                raise ValueError("Para enviar StreamUrl activa primero el alojamiento de imágenes")
+            self._url(target.get("url", ""))
+            if not target.get("mount", "").startswith("/") or not target.get("password_env"):
+                raise ValueError("Icecast requiere mount /… y nombre de variable para contraseña")
+        if self.azuracast_write_enabled and any(t.get("enabled", False) for t in self.icecast_targets):
+            raise ValueError("Elige publicación directa Icecast o AzuraCast para evitar escritores simultáneos")
+
+    @staticmethod
+    def _url(value):
+        url = urlsplit(value)
+        if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError("Usa URL http(s) sin contraseña, parámetros ni fragmento")
+
+
+class ConfigStore:
+    def __init__(self, directory: Path):
+        self.directory = directory
+        self.path = directory / "config.json"
+
+    def load(self):
+        if not self.path.exists():
+            config = Config()
+            self.save(config)
+            return config
+        values = json.loads(self.path.read_text(encoding="utf-8"))
+        if not isinstance(values, dict):
+            raise ValueError("La configuración debe ser un objeto JSON")
+        migrate = values.get("version", 1) == 1
+        if migrate:
+            original = self.path.read_bytes()
+            values["version"] = 2
+        config = Config(**values)
+        config.validate()
+        if migrate:
+            backup = self.directory / "config.v1.backup.json"
+            if not backup.exists():
+                atomic_write(backup, original)
+            self.save(config)
+        return config
+
+    def save(self, config):
+        config.validate()
+        atomic_write(self.path, json.dumps(asdict(config), ensure_ascii=False, indent=2).encode("utf-8"))
