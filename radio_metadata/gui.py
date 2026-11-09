@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QTabWidget, QVBoxLayout, QWidget,
 )
 
-from .appearance import apply_appearance
+from .appearance import apply_appearance, source_name
 from .credentials import WindowsCredentials, MemoryCredentials
 from .settings import SettingsDialog
 from .engine import Engine
@@ -312,6 +312,7 @@ class MainWindow(QMainWindow):
                     rows = history.db.execute('SELECT played_at, source, artist, title, album, year FROM songs ORDER BY id DESC').fetchall()
                 finally:
                     history.close()
+                rows = [(row[0], source_name(row[1]), *row[2:]) for row in rows]
                 writer.writerows([("'" + str(v) if str(v).startswith(('=', '+', '-', '@')) else v) for v in row] for row in rows)
         except Exception:
             QMessageBox.warning(self, 'Exportar historial', 'No se pudo exportar. Revisa la ubicación y los permisos del archivo.')
@@ -329,7 +330,7 @@ class MainWindow(QMainWindow):
             self.album.setText(" · ".join(str(x) for x in details if x))
         else:
             self.album.clear()
-        self.active.setText("Fuente seleccionada: " + decision.source)
+        self.active.setText("Fuente seleccionada: " + source_name(decision.source))
         self.reason.setText(("⚠ Ambas fuentes reproducen. " if decision.conflict else "") + decision.reason)
         art = decision.song.artwork if decision.song else b""
         pixmap = QPixmap()
@@ -342,7 +343,7 @@ class MainWindow(QMainWindow):
         else:
             self.cover.clear()
             self.cover.setText("Sin carátula")
-        lines = [f"{s.source}: " + (s.error or ("reproduciendo" if s.playing else "pausado / detenido")) +
+        lines = [f"{source_name(s.source)}: " + (s.error or ("reproduciendo" if s.playing else "pausado / detenido")) +
                  (f"\n  Observado (solo diagnóstico): {s.artist} — {s.title}" if s.title else "") for s in snapshots]
         lines.extend(statuses or ["Salida local: activa" if not statuses else ""])
         lines.append("Los cambios pueden tardar un intervalo de consulta más la latencia del servidor.")
@@ -380,8 +381,8 @@ class MainWindow(QMainWindow):
         self.history.setRowCount(len(rows))
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
-                item = QTableWidgetItem(self.display_time(value) if j == 0 else str(value or ""))
-                item.setToolTip(str(value or ""))
+                item = QTableWidgetItem(self.display_time(value) if j == 0 else (source_name(str(value)) if j == 1 else str(value or "")))
+                item.setToolTip(item.text())
                 self.history.setItem(i, j, item)
         self.tray.setToolTip(("Radio Metadata • " + decision.text)[:120])
 

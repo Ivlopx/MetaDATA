@@ -32,8 +32,10 @@ class GuiTests(unittest.TestCase):
             try:
                 until(lambda: window.title.text() == "Canción de prueba")
                 self.assertEqual(window.history.rowCount(), 1)
+                self.assertEqual(window.history.item(0, 1).text(), "RadioBOSS")
                 self.assertIn("Álbum de prueba", window.album.text())
                 self.assertEqual(window.history.columnCount(), 6)
+                self.assertIn("RadioBOSS", window.active.text())
                 dialog = SettingsDialog(config, window)
                 dialog.fields["station_name"].setText("Radio de prueba")
                 dialog.fields["remote_monitor_enabled"].setChecked(True)
@@ -73,6 +75,7 @@ class GuiTests(unittest.TestCase):
             config = store.load()
             vault = MemoryCredentials()
             dialog = SettingsDialog(config, store=store, credentials=vault)
+            self.assertEqual(dialog.fields["priority"].currentText(), "RadioBOSS")
             secret = dialog.secrets['radioboss']
             self.assertEqual(secret.edit.echoMode(), QLineEdit.EchoMode.Password)
             secret.edit.setText('private-test-key')

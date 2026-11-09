@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, 
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox, QPlainTextEdit,
     QPushButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
 
+from .appearance import source_name
 from .config import Config
 from .credentials import CredentialError, MemoryCredentials, secret_id, commit_settings
 from .connection_tests import OverlayCredentials, check_connection
@@ -263,8 +264,9 @@ class SettingsDialog(QDialog):
 
         rules = section('Música')
         priority = QComboBox()
-        priority.addItems(['radioboss', 'spotify'])
-        priority.setCurrentText(config.priority)
+        for value in ('radioboss', 'spotify'):
+            priority.addItem(source_name(value), value)
+        priority.setCurrentIndex(priority.findData(config.priority))
         self.fields['priority'] = priority
         rules.addRow('Si ambas reproducen, preferir', priority)
         for key, label in [('music_folders', 'Carpetas de música RadioBOSS'), ('excluded_folders', 'Carpetas excluidas'),
@@ -395,7 +397,7 @@ class SettingsDialog(QDialog):
             elif isinstance(field, QCheckBox):
                 values[key] = field.isChecked()
             elif isinstance(field, QComboBox):
-                values[key] = field.currentData() if key == 'theme' else field.currentText()
+                values[key] = field.currentData() if key in ('theme', 'priority') else field.currentText()
             elif isinstance(field, QSpinBox):
                 values[key] = field.value()
             else:

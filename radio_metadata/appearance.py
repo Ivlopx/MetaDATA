@@ -12,3 +12,7 @@ def apply_appearance(app: QApplication, theme='system'):
             app.setStyle(styles['windows11'])
     scheme = {'system': Qt.ColorScheme.Unknown, 'light': Qt.ColorScheme.Light, 'dark': Qt.ColorScheme.Dark}[theme]
     app.styleHints().setColorScheme(scheme)
+
+
+def source_name(value):
+    return {'radioboss': 'RadioBOSS', 'spotify': 'Spotify', 'estación': 'Estación'}.get(value, value)
