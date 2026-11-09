@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from dataclasses import replace
 
 from .model import Snapshot, resolve
@@ -69,6 +70,8 @@ class Engine:
                 return await asyncio.wait_for(source.poll(), timeout=12)
             except Exception as error:
                 log.warning('Fuente %s: %s', source.name, type(error).__name__)
+                if isinstance(error, ModuleNotFoundError) and re.fullmatch(r'winrt(?:\.[A-Za-z_][A-Za-z_0-9]*)*', error.name or ''):
+                    return Snapshot(source.name, error=f'Falta el componente {error.name}. Cierra la app y vuelve a ejecutar instalar.bat.')
                 return Snapshot(source.name, error=f'No disponible ({type(error).__name__}); comprobar ajustes')
         mode = self.mode_provider() if self.mode_provider else self.mode
         sources = [] if mode == 'station' else make_sources(self.config, self.demo, self.scenario)

@@ -1,5 +1,9 @@
 # Adaptación 0.2 a la investigación de ORO FM
 
+## Corrección 0.2.1 para Windows
+
+Se agregan las dependencias explícitas de Windows.Foundation y Windows.Foundation.Collections utilizadas por el lector Spotify/SMTC. Los paquetes Media de PyWinRT 3.2.1 solo las incluyen con el extra `all`, que no se utiliza para evitar instalar namespaces innecesarios. La app ahora informa el módulo WinRT faltante en lugar de mostrar únicamente `ModuleNotFoundError`. Para actualizar: cerrar la app, `git pull`, `instalar.bat` y volver a iniciarla. Esta corrección aún requiere confirmación en la PC Windows del usuario.
+
 ## Disponible en la aplicación
 
 - Datos ampliados de canciones: álbum, artista del álbum, año, género, ISRC, duración, posición y número de pista cuando estén disponibles. RadioBOSS obtiene sus tags y Spotify las propiedades multimedia de Windows. El año e ISRC no se inventan para Spotify.

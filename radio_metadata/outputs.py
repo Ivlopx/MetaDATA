@@ -12,6 +12,7 @@ import httpx
 
 from .config import atomic_write
 from .model import clean
+from . import __version__
 
 
 def image_type(data):
@@ -27,7 +28,7 @@ def image_type(data):
 
 
 def xml_state(state):
-    root = Writer.Element('PLAYER', name='MetaDATA', version='0.2.0')
+    root = Writer.Element('PLAYER', name='MetaDATA', version=__version__)
     fields = {'ARTIST': state['artist'], 'TITLE': state['title'] if state['is_music'] else state['text'],
               'ALBUM': state['album'], 'YEAR': state['year'], 'GENRE': state['genre'],
               'ISRC': state['isrc'], 'SOURCE': state['source'], 'IS_MUSIC': str(state['is_music']).lower(),

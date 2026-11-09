@@ -1,4 +1,4 @@
-# MetaDATA · versión 0.2
+# MetaDATA · versión 0.2.1
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra **metadatos**; el audio continúa por Windows → FXSound → consola → USB → RadioCaster. No modifica ese recorrido.
 
@@ -95,6 +95,8 @@ Carpeta predeterminada `%LOCALAPPDATA%\RadioMetadataManager`; `--data-dir C:\rut
 Para agregar una app implementa `Source.poll()` asíncrono con Snapshot y regístrala en `make_sources`; añade su criterio de clasificación en `valid_music` y ajustes. Los conectores no controlan reproducción de RadioBOSS/Spotify; los controles actuales administran selección/publicación. No hay reconocimiento acústico, OAuth Spotify, carga de portada arbitraria en la API de AzuraCast, retardo ajustable por destino ni reconexión del audio. El AutoDJ, grabaciones, relays y búsqueda de carátulas se configuran en el panel de AzuraCast; no se modifican desde esta app.
 
 ## Pruebas
+
+Si Spotify muestra `ModuleNotFoundError`, cierra MetaDATA desde **Salir**, ejecuta `git pull` y después `instalar.bat`. La versión 0.2.1 agrega los paquetes base `winrt-Windows.Foundation` y `winrt-Windows.Foundation.Collections`, que PyWinRT 3.2.1 no instala automáticamente con los paquetes de Media. Si falta otro componente WinRT, el estado de la fuente muestra su nombre para diagnosticarlo. [Dependencias modulares de PyWinRT](https://pywinrt.readthedocs.io/en/latest/installing/).
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v

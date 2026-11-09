@@ -186,6 +186,34 @@ class PersistenceTests(unittest.TestCase):
                 self.assertEqual(rows, [])
             engine.close()
 
+    def test_missing_windows_module_has_actionable_error_and_no_song(self):
+        class Missing:
+            name = "spotify"
+            async def poll(self):
+                raise ModuleNotFoundError("internal exception text", name="winrt.windows.foundation.collections")
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = Engine(Config(), Path(tmp))
+            with patch("radio_metadata.engine.make_sources", return_value=[Missing()]):
+                decision, sources, _, rows = asyncio.run(engine.tick())
+            self.assertIsNone(decision.song)
+            self.assertIn("winrt.windows.foundation.collections", sources[0].error)
+            self.assertIn("instalar.bat", sources[0].error)
+            self.assertNotIn("internal exception text", sources[0].error)
+            self.assertEqual(rows, [])
+            engine.close()
+
+    def test_unknown_module_name_does_not_expose_sensitive_exception_data(self):
+        class Missing:
+            name = "spotify"
+            async def poll(self):
+                raise ModuleNotFoundError("secret message", name="https://user:secret@host")
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = Engine(Config(), Path(tmp))
+            with patch("radio_metadata.engine.make_sources", return_value=[Missing()]):
+                _, sources, _, _ = asyncio.run(engine.tick())
+            self.assertNotIn("secret", sources[0].error)
+            engine.close()
+
 
 if __name__ == "__main__":
     unittest.main()

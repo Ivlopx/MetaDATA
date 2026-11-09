@@ -25,3 +25,7 @@ Resultado final: **32 pruebas aprobadas**. Se construyó el paquete Python 0.2.0
 - Construcción y arranque del EXE en una PC sin Python, empaquetado WinRT y firma.
 
 Las pruebas de la versión 0.1 y el informe previo se conservan como contexto de la implementación incremental. Los datos de la consola física no se deducen de los metadatos y una clasificación musical no es una detección acústica de anuncios.
+
+## Corrección Spotify 0.2.1
+
+Se comprobó en los metadatos públicos de PyPI que los namespaces Foundation y Foundation.Collections no son dependencias automáticas de los paquetes Media 3.2.1 sin el extra `all`. Se agregaron explícitamente. Pasaron 17 pruebas de lógica, incluidas dos nuevas para informar el módulo WinRT faltante y evitar exponer mensajes de excepción ajenos. La descarga de las cinco bibliotecas WinRT y su runtime para CPython 3.11 Windows x64 se resolvió correctamente. Falta confirmar la ejecución nativa en la computadora Windows del usuario.
