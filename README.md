@@ -1,10 +1,10 @@
-# MetaDATA · copia de prueba 0.4.0a2
+# MetaDATA · copia de prueba 0.4.0a3
 
-**Rama experimental:** AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). Incluye comandos para RadioCaster y una salida HLS local experimental con ID3 y portada; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
+**Rama experimental:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
 Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar los ajustes de esta rama. No es necesario instalar otra copia si ya trabajas en ella. Las conexiones en vivo no se modifican automáticamente. Incluye botones para copiar/abrir rutas, carpeta `covers`, caché ligada al historial visible e indicadores de conexión.
 
-Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos; el audio continúa por Windows → FXSound → consola → USB → RadioCaster.
+Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos de forma independiente del programa de transmisión. El emisor que elijas captura y envía el audio; MetaDATA prepara archivos y, opcionalmente, audio codificado para integraciones compatibles.
 
 La interfaz utiliza controles de escritorio, colores del sistema y cuatro pantallas: **Inicio, Historial, Conexiones y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
@@ -38,14 +38,14 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 2. **Conexiones → RadioBOSS → Configurar**: activa su API HTTP en RadioBOSS, indica dirección/usuario y escribe la contraseña en la app. Pulsa **Probar conexión** y **Guardar**. Usa localhost para esta instalación.
 3. **Ajustes → Música**: agrega las carpetas de canciones. Excluye carpetas, términos y tipos de anuncios, promos y jingles. Sin carpetas aprobadas, RadioBOSS no publica canciones. No se deducen artista y título del nombre del archivo.
 4. **Conexiones → Spotify**: consulta sus sesiones multimedia de Windows sin clave API ni OAuth. Empieza en observación; permite sus canciones en selección e historial cuando hayas comprobado el comportamiento. Windows no garantiza clasificar todos los anuncios. La app no concede derechos de retransmisión; consulta las condiciones de Spotify.
-5. **Conexiones → RadioCaster** muestra el archivo que debes seleccionar en RadioCaster → Settings → Metadata → **Read from XML file**. En **Title Format** escribe `{TRACK[CASTTITLE]}`. Normalmente es:
+5. **Conexiones → Now Playing** muestra TXT, XML y JSON: selecciona lo que admita tu emisor y copia su ruta. Ejemplo específico de RadioCaster: Settings → Metadata → **Read from XML file**, **Title Format** `{TRACK[CASTTITLE]}`. El XML normalmente está en:
 
    ```text
    %LOCALAPPDATA%\RadioMetadataManager-OggPrueba\output\nowplaying.xml
    ```
 
-   El TXT continúa disponible para **Read from file** con primera línea y UTF-8, si prefieres mantener esa entrada.
-6. RadioCaster conserva sus encoders hacia **AzuraCast y Zeno.fm**. Sus claves de transmisión siguen en RadioCaster. No necesitas copiarlas a MetaDATA si usas esta ruta.
+   El TXT contiene una primera línea en UTF-8. XML y JSON requieren configurar el lector correspondiente; no hay un esquema universal que acepten todos los emisores.
+6. Configura los destinos y contraseñas de transmisión en tu emisor. Para la integración de codificador externo, entra en **Ajustes → Codificador** y verifica el contrato PCM/STDIN/STDOUT que necesita ese programa. RadioCaster es una adaptación opcional; no es una dependencia del motor de metadatos.
 
 En Inicio selecciona Automático, Solo RadioBOSS o Solo Spotify. Si ambas reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
 
@@ -53,11 +53,11 @@ Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y public
 
 ## Pausas y carátulas
 
-**Durante anuncios, pausas, errores o ausencia de una canción válida, artista, título, álbum y portada de canción quedan vacíos.** El archivo TXT contiene una línea vacía y el XML no convierte el mensaje de estación en título. La publicación Icecast envía el título vacío; la API AzuraCast envía artista y título vacíos. No se envían nombre ni eslogan como una canción ficticia.
+**Durante anuncios, pausas, errores o ausencia de una canción válida, artista, título, álbum y portada de canción quedan vacíos.** El archivo TXT contiene una línea vacía y el XML no convierte el mensaje de estación en título. El emisor debe leer y propagar el vaciado; MetaDATA no publica títulos directamente en los servidores. No se envían nombre ni eslogan como una canción ficticia.
 
 El JSON distingue los campos musicales de `station`, `slogan`, `logo_file` y `display_message`, que son identidad y presentación del reproductor propio. Durante una pausa, `is_music` es falso y `artwork_file` queda vacío. El logo puede mostrarse como identidad visual sin incorporarse al historial musical.
 
-Para una **canción real sin portada**, se utiliza el logo configurado como imagen de respaldo y se conservan su artista y título reales. Esto funciona en la ventana, el reproductor propio y la URL opcional para destinos Icecast-KH compatibles. La API de títulos de AzuraCast no permite cargar esa imagen: su logo y búsqueda de portadas se configuran en su panel.
+Para una **canción real sin portada**, se utiliza el logo configurado como imagen de respaldo y se conservan su artista y título reales. Esto funciona en la ventana, en las salidas que incorporan imágenes y en el reproductor propio. Su presentación en otras aplicaciones depende del formato y del receptor.
 
 Enviar un vaciado y dejar de enviar actualizaciones son operaciones distintas: dejar de actualizar puede mantener la canción anterior. El manual de RadioCaster no garantiza el tratamiento de un archivo vacío. Hay que comprobarlo en tu versión. Icecast admite actualizaciones del título, pero no incluye una orden universal para excluir entradas del historial de otros servicios. AzuraCast, Liquidsoap y cada reproductor pueden aplicar caché, datos de respaldo o mostrar la última canción; **no se garantiza controlar sus historiales desde esta app**. No se modificó la estación real para verificarlo.
 
@@ -85,10 +85,10 @@ Además del TXT, se generan XML, JSON, imágenes y un reproductor HTML. Se conse
 
 - **Ajustes → Carátulas** habilita la vista local, limitada a esta computadora. El botón Ver carátulas la abre; el audio requiere pulsar Play.
 - El alojamiento WebDAV opcional publica imágenes y JSON en una carpeta HTTPS existente con lectura pública. No sustituye una configuración de portadas de AzuraCast.
-- **Conexiones → AzuraCast** permite monitorear datos públicos y habilitar una salida directa opcional de artista/título con clave API.
-- **Ajustes → Icecast directo** permite agregar destinos con formularios y claves en la app. Su consulta de estadísticas es pública y no verifica la contraseña ni permisos de publicación.
+- **Conexiones → Now Playing** muestra los archivos TXT, XML y JSON para tu emisor.
+- **Ajustes → Codificador** genera un comando general con valores numéricos para programas que admitan el contrato de audio por consola. Las variables de RadioCaster son una adaptación opcional, no la base del producto.
 
-Usa una sola ruta de publicación por destino para evitar que RadioCaster, Liquidsoap y la app sobrescriban sus títulos. Los encoders de Zeno.fm permanecen en RadioCaster.
+AzuraCast, Zeno.fm y los destinos Icecast se configuran en el programa de transmisión. MetaDATA ya no presenta conexiones directas ni ejecuta sus antiguos escritores o monitor remoto, aunque estuvieran activados en un perfil anterior. Las credenciales antiguas no se eliminan; al guardar ajustes se desactivan sus indicadores de publicación. No cambia las conexiones existentes del emisor.
 
 Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INTEGRACIONES.md), [Novedades 0.3](docs/NOVEDADES-0.3.md) y [Validación](docs/VALIDACION.md). La [investigación original](outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) documenta las capacidades de ORO FM, RadioCaster, Icecast y AzuraCast.
 
@@ -99,8 +99,9 @@ La carpeta predeterminada es `%LOCALAPPDATA%\RadioMetadataManager-OggPrueba`. La
 | Módulo | Responsabilidad |
 | --- | --- |
 | `sources.py`, `model.py` | Lecturas de fuentes, selección y exclusiones |
-| `outputs.py` | Exportación y publicación opcional |
-| `remote.py`, `webserver.py`, `player.py` | Monitoreo público y reproductor |
+| `outputs.py` | Exportación local y alojamiento WebDAV opcional; conectores directos heredados sin uso en el motor |
+| `webserver.py`, `player.py` | API y reproductor local |
+| `aac_encoder.py`, `ogg_encoder.py` | Codificación por consola, con adaptación opcional de comandos |
 | `engine.py`, `storage.py` | Ciclo de trabajo e historial |
 | `config.py`, `credentials.py` | Ajustes y claves separadas |
 | `gui.py`, `settings.py`, `appearance.py` | Ventana, formularios y apariencia del sistema |

@@ -70,6 +70,10 @@ class AACTests(unittest.TestCase):
         mp3 = command_line('nowplaying.json', 'ffmpeg.exe', 'mp3')
         self.assertIn('--format mp3', mp3)
         self.assertNotIn('--hls-dir', mp3)
+        general = command_line('nowplaying.json', 'ffmpeg', use_variables=False,
+                               sample_rate=44100, channels=1, bitrate=96)
+        self.assertNotIn('{', general)
+        self.assertIn('--sample-rate 44100 --channels 1 --bitrate 96', general)
         with self.assertRaises(EncoderError):
             command_line('nowplaying.json', 'ffmpeg', 'mp3', True)
         with patch('radio_metadata.aac_encoder.subprocess.run',

@@ -82,7 +82,7 @@ class Worker(QThread):
                         engine.webdav.next_attempt = 0
                     loop.run_until_complete(engine.publish(decision))
                 except Exception:
-                    self.failed.emit("No se pudo escribir el mensaje de cierre; revisa RadioCaster.")
+                    self.failed.emit("No se pudo vaciar Now Playing al cerrar; revisa los archivos de salida.")
                 finally:
                     engine.close()
             loop.run_until_complete(loop.shutdown_default_executor())
@@ -200,15 +200,13 @@ class MainWindow(QMainWindow):
         history_page.addWidget(self.history, 1)
 
         connections = page('Conexiones')
-        connections.addWidget(QLabel('Fuentes de información y destinos de la estación'))
+        connections.addWidget(QLabel('Fuentes de metadatos y archivos para tu emisor'))
         self.connection_labels = {}
         self.connection_dots = {}
         for name, destination, description in [
             ('RadioBOSS', 'RadioBOSS', 'Estado y metadatos mediante la API local'),
             ('Spotify', 'Spotify', 'Sesión multimedia de esta computadora'),
-            ('RadioCaster', 'RadioCaster', 'Archivo de títulos para los encoders'),
-            ('AzuraCast', 'AzuraCast', 'Monitoreo y publicación opcional por API'),
-            ('Zeno.fm', 'RadioCaster', 'Emisión secundaria mediante RadioCaster')]:
+            ('Now Playing', 'Now Playing', 'Archivos para la aplicación de transmisión que elijas')]:
             row = QHBoxLayout()
             icon = QLabel()
             icon.setPixmap(brand_icon(name).pixmap(24, 24))
@@ -232,23 +230,18 @@ class MainWindow(QMainWindow):
         details = QPushButton('Mostrar detalles')
         details.setCheckable(True)
         connections.addWidget(details)
-        diagnostics_tabs = QTabWidget()
         self.diagnostics = QPlainTextEdit()
         self.diagnostics.setReadOnly(True)
-        self.remote = QPlainTextEdit()
-        self.remote.setReadOnly(True)
-        diagnostics_tabs.addTab(self.diagnostics, 'Fuentes y salidas')
-        diagnostics_tabs.addTab(self.remote, 'Servidores')
-        diagnostics_tabs.setVisible(False)
-        details.toggled.connect(diagnostics_tabs.setVisible)
+        self.diagnostics.setVisible(False)
+        details.toggled.connect(self.diagnostics.setVisible)
         details.toggled.connect(lambda visible: details.setText('Ocultar detalles' if visible else 'Mostrar detalles'))
-        connections.addWidget(diagnostics_tabs, 1)
+        connections.addWidget(self.diagnostics, 1)
         connections.addStretch()
 
         settings_page = page('Ajustes')
         for name, description in [('Estación', 'Nombre, mensajes, logo y apariencia'), ('Música', 'Prioridad, carpetas y exclusiones'),
-                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Icecast directo', 'Destinos opcionales'), ('Codificador', 'AAC principal, MP3 de respaldo y prueba HLS con portada'),
-                                  ('Avanzados', 'Intervalos, monitoreo y reproductor')]:
+                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Now Playing', 'TXT, XML y JSON para tu aplicación de transmisión'), ('Codificador', 'AAC principal, MP3 de respaldo y prueba HLS con portada'),
+                                  ('Avanzados', 'Intervalos y reproductor local')]:
             row = QHBoxLayout()
             label = QLabel(description)
             label.setWordWrap(True)
@@ -260,8 +253,8 @@ class MainWindow(QMainWindow):
         self.guide = QPlainTextEdit()
         self.guide.setReadOnly(True)
         self.guide.setPlainText('Las claves se introducen desde Conexiones y se guardan en tu usuario de Windows.\n\n'
-            'Carátulas de AzuraCast: activa Album Art en los servicios de su panel, con permisos de administrador. '
-            'La búsqueda puede devolver otra edición. MetaDATA conserva la imagen exacta disponible para su reproductor.\n\n'
+            'MetaDATA obtiene los datos de las fuentes de reproducción y genera salidas para tu emisor. '
+            'El audio y las conexiones con tus servidores se configuran en la aplicación de transmisión que elijas.\n\n'
             'Los anuncios, promos y jingles excluidos vacían los datos publicados y no entran al historial musical. '
             'La selección no identifica de forma infalible el audio de la consola.')
         settings_page.addWidget(self.guide, 1)
@@ -362,19 +355,6 @@ class MainWindow(QMainWindow):
         if self.demo:
             lines.append("Datos sintéticos. No se consulta ni publica a servidores; salida demo separada.")
         self.diagnostics.setPlainText("\n".join(lines))
-        if extra and extra[0]:
-            remote_lines = []
-            for record in extra[0]:
-                status = ("No disponible: " + record["error"]) if record["error"] else (
-                    "Fuera de línea" if not record['online'] else ("Coincide con la selección" if record['matches'] else "Difiere de la selección; puede existir retardo"))
-                remote_lines.extend([f"{record['service']}: {status}", "  Observado: " + record['text'],
-                                     "  Álbum remoto: " + record.get('album', ''),
-                                     "  Imagen informada: " + record.get('artwork_url', ''),
-                                     "  Consultado: " + record['checked_at'], ""])
-            remote_lines.append("Los datos remotos no cambian la selección ni entran al historial musical local.")
-            self.remote.setPlainText("\n".join(remote_lines))
-        else:
-            self.remote.setPlainText("Comprobación remota desactivada o modo demo. Actívala en Conexiones → AzuraCast.")
         self.history_rows = rows
         self.recent.setRowCount(min(3, len(rows)))
         for i, row in enumerate(rows[:3]):
@@ -399,7 +379,7 @@ class MainWindow(QMainWindow):
     def report_failure(self, message):
         self.output_label.setText(message)
         for name, dot in self.connection_dots.items():
-            state = 'error' if name == 'RadioCaster' else 'unknown'
+            state = 'error' if name == 'Now Playing' else 'unknown'
             dot.setPixmap(status_pixmap(state))
             dot.setProperty('state', state)
             self.connection_labels[name].setText('Administrador detenido · estado sin actualizar')

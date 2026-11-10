@@ -1,5 +1,4 @@
 """Native settings forms. Secrets are staged until the complete dialog is saved."""
-from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
@@ -18,8 +17,6 @@ from .connection_tests import OverlayCredentials, check_connection
 def credential_key(service, config):
     if service == 'radioboss':
         return secret_id(service, config.radioboss_url, config.radioboss_user)
-    if service == 'azuracast':
-        return secret_id(service, config.azuracast_url)
     return secret_id('webdav', config.webdav_upload_url, config.webdav_username)
 
 
@@ -78,100 +75,6 @@ class ConnectionCheck(QThread):
         self.result.emit(*asyncio.run(check_connection(*self.arguments)))
 
 
-class IcecastDialog(QDialog):
-    def __init__(self, target, credentials, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Destino Icecast')
-        self.resize(580, 360)
-        self.original = target
-        self.checker = None
-        layout = QVBoxLayout(self)
-        form = QFormLayout()
-        layout.addLayout(form)
-        self.fields = {}
-        for key, label, default in [('name', 'Nombre', ''), ('url', 'Servidor', 'https://'),
-                                    ('mount', 'Mount', '/stream'), ('username', 'Usuario', 'source'),
-                                    ('verify_url', 'Estadísticas JSON (opcional)', '')]:
-            field = QLineEdit(target.get(key, default))
-            self.fields[key] = field
-            form.addRow(label, field)
-        key = secret_id('icecast', target.get('url', ''), target.get('mount', ''), target.get('username', 'source'))
-        self.secret = SecretField(credentials, key)
-        form.addRow('Contraseña', self.secret)
-        for key, label in [('enabled', 'Publicar títulos en este destino'), ('send_artwork_url', 'Enviar URL de carátula (Icecast-KH compatible)')]:
-            field = QCheckBox(label)
-            field.setChecked(target.get(key, False))
-            self.fields[key] = field
-            form.addRow(field)
-        note = QLabel('La ruta habitual es el archivo de títulos de RadioCaster. Activa esta salida solo si el servidor permite actualizar sus metadatos y no hay otro escritor.')
-        note.setWordWrap(True)
-        layout.addWidget(note)
-        self.test_message = QLabel('')
-        self.test_message.setWordWrap(True)
-        layout.addWidget(self.test_message)
-        test = QPushButton('Consultar estadísticas')
-        test.clicked.connect(lambda: self.test_stats(test))
-        layout.addWidget(test)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.button(QDialogButtonBox.StandardButton.Save).setText('Guardar')
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('Cancelar')
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def test_stats(self, button):
-        if self.checker and self.checker.isRunning():
-            return
-        if getattr(self.parent(), 'demo', False):
-            self.test_message.setText('La demostración no consulta servicios externos.')
-            return
-        target = {key: field.text().strip() for key, field in self.fields.items() if isinstance(field, QLineEdit)}
-        try:
-            Config._url(target['url'])
-            if target['verify_url']:
-                Config._url(target['verify_url'])
-            if not target['mount'].startswith('/'):
-                raise ValueError('El mount debe comenzar por /.')
-        except ValueError as error:
-            self.test_message.setText(str(error))
-            return
-        button.setEnabled(False)
-        self.test_message.setText('Consultando estadísticas públicas…')
-        self.checker = ConnectionCheck('Icecast directo', Config(icecast_targets=[target]), MemoryCredentials(), Path('.'), self)
-        self.checker.result.connect(lambda ok, message: self.test_message.setText(message))
-        self.checker.finished.connect(lambda: button.setEnabled(True))
-        self.checker.start()
-
-    def done(self, result):
-        if self.checker and self.checker.isRunning():
-            self.test_message.setText('Espera a que termine la consulta antes de cerrar.')
-            return
-        super().done(result)
-
-    def save(self):
-        target = dict(self.original)
-        for key, field in self.fields.items():
-            target[key] = field.isChecked() if isinstance(field, QCheckBox) else field.text().strip()
-        try:
-            # Validate URLs and field types without requiring the parent hosting form yet.
-            Config._url(target['url'])
-            if target['verify_url']:
-                Config._url(target['verify_url'])
-            if not target['mount'].startswith('/'):
-                raise ValueError('El mount debe comenzar por /.')
-        except ValueError as error:
-            QMessageBox.warning(self, 'Revisar destino', str(error))
-            return
-        old_key = secret_id('icecast', self.original.get('url', ''), self.original.get('mount', ''), self.original.get('username', 'source'))
-        new_key = secret_id('icecast', target['url'], target['mount'], target['username'])
-        if self.secret.changed or old_key != new_key:
-            target['managed_password'] = True
-        self.result_target = target
-        key = secret_id('icecast', target['url'], target['mount'], target['username'])
-        self.result_changes = self.secret.pending(key)
-        self.accept()
-
-
 class SettingsDialog(QDialog):
     def __init__(self, config, parent=None, *, store=None, credentials=None, page='Estación', demo=False):
         super().__init__(parent)
@@ -180,8 +83,7 @@ class SettingsDialog(QDialog):
         self.original, self.store, self.demo = config, store, demo
         self.data_directory = parent.store.directory if parent is not None and hasattr(parent, 'store') else (store.directory if store else Path('.'))
         self.credentials = credentials if credentials is not None else MemoryCredentials()
-        self.fields, self.secrets, self.target_changes = {}, {}, {}
-        self.targets = deepcopy(config.icecast_targets)
+        self.fields, self.secrets = {}, {}
         self.checker = None
         layout = QVBoxLayout(self)
         body = QHBoxLayout()
@@ -301,20 +203,11 @@ class SettingsDialog(QDialog):
         note(sp, 'No requiere una clave API. Abre Spotify en esta computadora. La detección de anuncios tiene límites: usa Pausar metadatos cuando sea necesario.')
         probe(sp, 'Spotify')
 
-        caster = section('RadioCaster')
-        note(caster, 'En RadioCaster elige Read from XML file y selecciona nowplaying.xml. En Title Format escribe {TRACK[CASTTITLE]}. El TXT se conserva como alternativa. RadioCaster conserva la captura USB y sus encoders hacia AzuraCast y Zeno.fm.')
+        caster = section('Now Playing')
+        note(caster, 'Elige el formato que acepte tu aplicación de transmisión: TXT para un título combinado, XML para atributos separados o JSON para integraciones. Copia la ruta o abre la carpeta y selecciona el archivo en tu emisor.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
-        note(caster, 'Artista y título viajan en el texto de la canción. La imagen requiere una ruta aparte o la búsqueda de portadas de AzuraCast; Icecast no transporta carátulas como metadato estándar.')
-        probe(caster, 'RadioCaster')
-
-        az = section('AzuraCast')
-        text(az, 'azuracast_url', 'Panel de AzuraCast')
-        text(az, 'azuracast_station', 'ID de estación')
-        check(az, 'remote_monitor_enabled', 'Comprobar lo que reciben los servidores')
-        check(az, 'azuracast_write_enabled', 'Publicar títulos directamente por API (opcional)')
-        secret(az, 'azuracast', 'Clave API')
-        probe(az, 'AzuraCast')
-        note(az, 'Con RadioCaster como escritor no necesitas una clave API. La salida directa publica artista y título; no carga álbum ni carátula en AzuraCast. La prueba de la clave verifica lectura y no publica nada.')
+        note(caster, 'Las conexiones y contraseñas de transmisión se configuran en el emisor que elijas. Cada programa interpreta los formatos de manera distinta; no se presupone compatibilidad con todos. Los archivos de texto no transportan imágenes por sí solos. Ejemplo RadioCaster: Read from XML file, Title Format {TRACK[CASTTITLE]}.')
+        probe(caster, 'Now Playing', 'Comprobar archivos')
 
         art = section('Carátulas')
         text(art, 'stream_url', 'Enlace de audio')
@@ -326,26 +219,23 @@ class SettingsDialog(QDialog):
         probe(art, 'Alojamiento de carátulas')
         note(art, 'El alojamiento debe existir y permitir WebDAV y lectura pública. Esta salida sirve al reproductor propio; no modifica las portadas de AzuraCast. En pausas y anuncios el logo se muestra solo como identidad visual, con los campos de canción vacíos.')
 
-        ice = section('Icecast directo')
-        note(ice, 'Opcional. Utiliza una sola ruta de publicación por mount para evitar títulos que se sobrescriban entre sí.')
-        self.target_list = QListWidget()
-        ice.addRow(self.target_list)
-        row = QHBoxLayout()
-        for label, action in [('Agregar…', lambda: self.edit_target(True)), ('Editar…', self.edit_target), ('Quitar', self.remove_target)]:
-            button = QPushButton(label)
-            button.clicked.connect(action)
-            row.addWidget(button)
-        ice.addRow(row)
-        self.refresh_targets()
-
         ogg = section('Codificador')
-        note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. RadioCaster sigue capturando el audio y conectando al servidor. Configura cada salida en una conexión separada.')
+        note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. Para un emisor que admita codificador externo por consola: recibe audio PCM de 16 bits por entrada estándar y devuelve audio codificado por salida estándar. Comprueba ese contrato en tu programa; este módulo no captura audio ni conecta al servidor.')
         encoder_format = QComboBox()
         for label, value in [('AAC — Principal', 'aac'), ('MP3 — Respaldo', 'mp3'), ('Ogg/Opus — Experimental', 'ogg')]:
             encoder_format.addItem(label, value)
         encoder_format.setCurrentIndex(encoder_format.findData(config.encoder_format))
         self.fields['encoder_format'] = encoder_format
         ogg.addRow('Formato', encoder_format)
+        rate = QComboBox()
+        for value in (32000, 44100, 48000):
+            rate.addItem(str(value), value)
+        rate.setCurrentIndex(rate.findData(config.encoder_sample_rate))
+        self.fields['encoder_sample_rate'] = rate
+        ogg.addRow('Frecuencia de entrada (Hz)', rate)
+        number(ogg, 'encoder_channels', 'Canales (1 mono / 2 estéreo)', 1, 2)
+        number(ogg, 'encoder_bitrate', 'Tasa de bits (kbps)', 32, 320)
+        check(ogg, 'encoder_radiocaster_variables', 'Usar variables de RadioCaster en el comando')
         text(ogg, 'ogg_ffmpeg_path', 'Archivo ffmpeg.exe')
         choose_encoder = QPushButton('Elegir FFmpeg…')
         choose_encoder.clicked.connect(self.choose_ffmpeg)
@@ -353,21 +243,25 @@ class SettingsDialog(QDialog):
         probe(ogg, 'Codificador', 'Comprobar codificador')
         check(ogg, 'encoder_hls_enabled', 'Generar también HLS local con portada (AAC, experimental)')
         self.encoder_mime = QLabel()
-        ogg.addRow('MIME para RadioCaster', self.encoder_mime)
-        note(ogg, 'En RadioCaster → Custom Encoders pega el comando y el MIME indicados. Los parámetros entre llaves los completa RadioCaster. El comando usa automáticamente la ruta abreviada de Python cuando Windows la ofrece.')
+        ogg.addRow('Tipo MIME', self.encoder_mime)
+        note(ogg, 'El comando general usa los valores de audio elegidos aquí: deben coincidir con la entrada del emisor. Para RadioCaster puedes activar sus variables; ese modo también usa la ruta abreviada de Python si Windows la ofrece. Esta integración específica no cambia las salidas Now Playing.')
         self.ogg_command = QLineEdit()
         self.ogg_command.setReadOnly(True)
-        self.ogg_command.setAccessibleName('Comando del codificador para RadioCaster')
+        self.ogg_command.setAccessibleName('Comando del codificador externo')
         ogg.addRow('Comando', self.ogg_command)
-        copy_command = QPushButton('Copiar comando para RadioCaster')
+        copy_command = QPushButton('Copiar comando')
         copy_command.clicked.connect(self.copy_ogg_command)
         ogg.addRow(copy_command)
         self.fields['ogg_ffmpeg_path'].textChanged.connect(self.refresh_ogg_command)
         encoder_format.currentIndexChanged.connect(self.encoder_format_changed)
         self.fields['encoder_hls_enabled'].toggled.connect(self.refresh_ogg_command)
+        rate.currentIndexChanged.connect(self.refresh_ogg_command)
+        self.fields['encoder_channels'].valueChanged.connect(self.refresh_ogg_command)
+        self.fields['encoder_bitrate'].valueChanged.connect(self.refresh_ogg_command)
+        self.fields['encoder_radiocaster_variables'].toggled.connect(self.refresh_ogg_command)
         self.encoder_format_changed()
         self.refresh_ogg_command()
-        note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por RadioCaster y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; todavía no está validado en navegadores ni se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
+        note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; todavía no está validado en navegadores ni se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
 
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
@@ -375,8 +269,6 @@ class SettingsDialog(QDialog):
         number(advanced, 'local_server_port', 'Puerto del reproductor local', 1024, 65535)
         number(advanced, 'stale_seconds', 'Ocultar datos vencidos tras (segundos)', 15, 300)
         text(advanced, 'spotify_app_id_contains', 'Identificador de Spotify contiene')
-        text(advanced, 'icecast_monitor_url', 'Servidor Icecast para monitoreo')
-        text(advanced, 'icecast_monitor_mount', 'Mount para monitoreo')
         note(advanced, 'Las claves se guardan en el almacén de credenciales de tu usuario de Windows, separadas del archivo de ajustes. Cambiar dirección o usuario requiere la clave de esa conexión. En demostración las claves son temporales.')
         self.message = QLabel('')
         self.message.setWordWrap(True)
@@ -401,11 +293,16 @@ class SettingsDialog(QDialog):
         path = self.data_directory / ('demo-output' if self.demo else 'output') / 'nowplaying.json'
         executable = find_ffmpeg(self.fields['ogg_ffmpeg_path'].text().strip())
         audio_format = self.fields['encoder_format'].currentData()
+        use_variables = self.fields['encoder_radiocaster_variables'].isChecked()
+        for key in ('encoder_sample_rate', 'encoder_channels', 'encoder_bitrate'):
+            self.fields[key].setEnabled(not use_variables)
+        options = dict(use_variables=use_variables, sample_rate=self.fields['encoder_sample_rate'].currentData(),
+                       channels=self.fields['encoder_channels'].value(), bitrate=self.fields['encoder_bitrate'].value())
         self.encoder_mime.setText({'aac': 'audio/aac', 'mp3': 'audio/mpeg', 'ogg': 'audio/ogg'}[audio_format])
         self.encoder_command_error = ''
         try:
-            command = (command_line(path, executable) if audio_format == 'ogg' else
-                       aac_command(path, executable, audio_format, self.fields['encoder_hls_enabled'].isChecked())) if executable else ''
+            command = (command_line(path, executable, **options) if audio_format == 'ogg' else
+                       aac_command(path, executable, audio_format, self.fields['encoder_hls_enabled'].isChecked(), **options)) if executable else ''
             self.ogg_command.setText(command)
             self.ogg_command.setCursorPosition(0)
             self.ogg_command.setToolTip(self.ogg_command.text())
@@ -440,30 +337,6 @@ class SettingsDialog(QDialog):
         if filename:
             self.fields['logo_path'].setText(filename)
 
-    def refresh_targets(self):
-        self.target_list.clear()
-        for target in self.targets:
-            self.target_list.addItem((target.get('name') or target.get('mount', 'Destino')) + (' · activo' if target.get('enabled') else ' · desactivado'))
-
-    def edit_target(self, add=False):
-        index = self.target_list.currentRow()
-        if not add and index < 0:
-            return
-        dialog = IcecastDialog({} if add else self.targets[index], OverlayCredentials(self.credentials, self.target_changes), self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            if add:
-                self.targets.append(dialog.result_target)
-            else:
-                self.targets[index] = dialog.result_target
-            self.target_changes.update(dialog.result_changes)
-            self.refresh_targets()
-
-    def remove_target(self):
-        index = self.target_list.currentRow()
-        if index >= 0:
-            self.targets.pop(index)
-            self.refresh_targets()
-
     def collect(self):
         values = asdict(self.original)
         for key, field in self.fields.items():
@@ -472,15 +345,18 @@ class SettingsDialog(QDialog):
             elif isinstance(field, QCheckBox):
                 values[key] = field.isChecked()
             elif isinstance(field, QComboBox):
-                values[key] = field.currentData() if key in ('theme', 'priority', 'encoder_format') else field.currentText()
+                values[key] = field.currentData() if key in ('theme', 'priority', 'encoder_format', 'encoder_sample_rate') else field.currentText()
             elif isinstance(field, QSpinBox):
                 values[key] = field.value()
             else:
                 values[key] = [v.strip() for v in field.toPlainText().splitlines() if v.strip()]
-        values['icecast_targets'] = deepcopy(self.targets)
+        values['azuracast_write_enabled'] = False
+        values['remote_monitor_enabled'] = False
+        values['icecast_targets'] = [dict(target, enabled=False, send_artwork_url=False)
+                                    for target in self.original.icecast_targets]
         config = Config(**values)
         config.validate()
-        changes = dict(self.target_changes)
+        changes = {}
         for service, field in self.secrets.items():
             changes.update(field.pending(credential_key(service, config)))
         changed_endpoints = {credential_key(service, config) for service in self.secrets

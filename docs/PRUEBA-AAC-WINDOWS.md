@@ -1,8 +1,10 @@
 # AAC principal, MP3 de respaldo y prueba HLS con portada
 
-Versión 0.4.0a2, 10 de noviembre de 2026. AAC es la ruta principal del proyecto; MP3 queda como respaldo. La salida Ogg sigue disponible para VLC y otros receptores compatibles.
+Versión 0.4.0a3, 10 de noviembre de 2026. AAC es la ruta principal del proyecto; MP3 queda como respaldo. La salida Ogg sigue disponible para VLC y otros receptores compatibles.
 
 ## Qué está implementado
+
+El producto es independiente del emisor. El comando general usa frecuencia, canales y bitrate definidos en Ajustes → Codificador. Los ejemplos de RadioCaster de esta guía describen una integración específica. Para seguirlos, activa **Usar variables de RadioCaster en el comando**; el modo general no requiere esos marcadores. Las conexiones AzuraCast/Zeno.fm/Icecast se configuran en el emisor; sus escritores directos heredados ya no se ejecutan en MetaDATA.
 
 - Un codificador de consola recibe PCM s16le de RadioCaster y devuelve AAC-LC/ADTS o MP3 por STDOUT. RadioCaster conserva captura y conexión. La misma instalación admite ambas salidas en conexiones separadas; no hay conmutación automática del oyente entre ellas.
 - Ajustes → **Codificador** permite elegir AAC, MP3 u Ogg, comprobar FFmpeg y copiar comando y MIME. AAC usa `audio/aac`, MP3 `audio/mpeg`, Ogg `audio/ogg`. Los comandos nuevos no alteran las conexiones ya guardadas en RadioCaster.
@@ -53,7 +55,7 @@ No detengas el MP3 existente para comprobar HLS. El objetivo sigue siendo que el
 
 ## Validación realizada
 
-**71 pruebas aprobadas**, con interfaz Qt, Ogg y AAC reales activados. AAC y MP3 se decodifican; HLS generado se abre con el demultiplexor HLS de FFmpeg; las etiquetas de título y portada de cada segmento se reconocen. Pruebas de estructura: imágenes, Unicode, timestamp de 33 bits, cambios de canción, vaciado, lista deslizante, conservación temporal de segmentos retirados y bloqueo de escritores. Los ensayos de fragmentación verifican que el parser admite tramas ADTS divididas entre lecturas. También se verifican los tipos MIME y el acceso HTTP local solo a los archivos HLS previstos. Estas pruebas no equivalen a validación de Safari/Chrome/Edge/Firefox ni de Windows/RadioCaster para el módulo AAC nuevo.
+**72 pruebas aprobadas**, con interfaz Qt, Ogg y AAC reales activados. AAC y MP3 se decodifican; HLS generado se abre con el demultiplexor HLS de FFmpeg; las etiquetas de título y portada de cada segmento se reconocen. Pruebas de estructura: imágenes, Unicode, timestamp de 33 bits, cambios de canción, vaciado, lista deslizante, conservación temporal de segmentos retirados y bloqueo de escritores. Los ensayos de fragmentación verifican que el parser admite tramas ADTS divididas entre lecturas. También se verifican los tipos MIME y el acceso HTTP local solo a los archivos HLS previstos. Estas pruebas no equivalen a validación de Safari/Chrome/Edge/Firefox ni de Windows/RadioCaster para el módulo AAC nuevo.
 
 ## Referencias
 

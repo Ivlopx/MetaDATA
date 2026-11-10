@@ -26,6 +26,10 @@ class Config:
     ogg_ffmpeg_path: str = ""
     encoder_format: str = "aac"
     encoder_hls_enabled: bool = False
+    encoder_radiocaster_variables: bool = False
+    encoder_sample_rate: int = 48000
+    encoder_channels: int = 2
+    encoder_bitrate: int = 128
     history_visible_limit: int = 200
     cover_cache_mb: int = 128
     theme: str = "system"
@@ -85,6 +89,8 @@ class Config:
             raise ValueError('Formato de codificador inválido')
         if self.encoder_hls_enabled and self.encoder_format != 'aac':
             raise ValueError('La prueba HLS requiere seleccionar AAC.')
+        if self.encoder_sample_rate not in (32000, 44100, 48000) or self.encoder_channels not in (1, 2) or not 32 <= self.encoder_bitrate <= 320:
+            raise ValueError('Usa 32000, 44100 o 48000 Hz, uno o dos canales y 32–320 kbps.')
         if not 10 <= self.history_visible_limit <= 1000 or not 8 <= self.cover_cache_mb <= 4096:
             raise ValueError("Historial: 10–1000 canciones; caché: 8–4096 MB")
         if self.theme not in ("system", "light", "dark"):

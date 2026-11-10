@@ -5,8 +5,7 @@ from dataclasses import replace
 
 from .credentials import WindowsCredentials, MemoryCredentials
 from .model import Snapshot, resolve
-from .outputs import AzuraCastOutput, IcecastOutput, LocalOutput, WebDavOutput
-from .remote import RemoteMonitor
+from .outputs import LocalOutput, WebDavOutput
 from .sources import make_sources
 from .storage import History
 
@@ -31,11 +30,10 @@ class Engine:
         config.validate()
         self.config = config
         self.cache_history = self.history.recent_artwork_files(config.history_visible_limit)
-        self.outputs = [] if self.demo else [IcecastOutput(t, self.credentials) for t in config.icecast_targets if t.get('enabled', False)]
-        if config.azuracast_write_enabled and not self.demo:
-            self.outputs.append(AzuraCastOutput(config, self.credentials))
+        # Legacy destination settings must never restart retired direct writers.
+        self.outputs = []
         self.webdav = WebDavOutput(config, self.local.directory, self.credentials) if config.webdav_enabled and not self.demo else None
-        self.monitor = RemoteMonitor(config) if config.remote_monitor_enabled and not self.demo else None
+        self.monitor = None
         self.remote_records = []
         if self.server:
             self.server.close()
@@ -54,13 +52,11 @@ class Engine:
             state = await asyncio.to_thread(self.local.publish, decision, self.config, self.cache_history)
         except Exception as error:
             log.error('Salida local: %s', type(error).__name__)
-            statuses.append('Error de salida local: RadioCaster podría conservar el título anterior')
+            statuses.append('Error de salida local: el emisor podría conservar el título anterior')
         if self.webdav:
             statuses.append(await asyncio.to_thread(self.webdav.send, decision, state))
         if state is not None:
             state['artwork_url'] = self.webdav.artwork_url if self.webdav else ''
-        # Icecast with StreamUrl must still clear old metadata on breaks when hosting is down.
-        statuses.extend(await asyncio.gather(*(asyncio.to_thread(o.send, decision, state) for o in self.outputs)))
         if self.server:
             statuses.append('Vista y API local: ' + self.server.url)
         if self.server_error:
@@ -91,8 +87,6 @@ class Engine:
             log.error('Historial: %s', type(error).__name__)
             errors.append('No se pudo guardar el historial')
         statuses = await self.publish(decision)
-        if self.monitor:
-            self.remote_records = await asyncio.to_thread(self.monitor.poll, decision.text if decision.song else '')
         if self.last_state != (decision.source, decision.reason, decision.conflict):
             log.info('Selección: %s; %s; conflicto=%s', decision.source, decision.reason, decision.conflict)
             self.last_state = decision.source, decision.reason, decision.conflict

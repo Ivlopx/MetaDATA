@@ -25,22 +25,7 @@ def connection_states(config, snapshots, statuses, remote_records, *, demo=False
         else:
             result[label] = 'unknown', 'Sin reproducción · disponibilidad sin confirmar'
     local_error = any(text.startswith('Error de salida local:') for text in statuses)
-    result['RadioCaster'] = (('error', 'No se pudo actualizar el archivo de títulos') if local_error else
-                             ('warning', 'Archivo listo · conexión del encoder sin comprobar') if local_exists else
+    result['Now Playing'] = (('error', 'No se pudo actualizar el archivo de títulos') if local_error else
+                             ('warning', 'Archivos listos · lectura por el emisor sin comprobar') if local_exists else
                              ('unknown', 'Esperando archivo de títulos'))
-    result['AzuraCast'] = 'unknown', 'Mediante RadioCaster · sin comprobación remota'
-    if config.remote_monitor_enabled and not demo:
-        record = next((item for item in remote_records if item['service'] == 'AzuraCast'), None)
-        if record:
-            if record['error']:
-                result['AzuraCast'] = 'error', record['error']
-            elif not record['online']:
-                result['AzuraCast'] = 'error', 'El servidor informa estación fuera de línea'
-            elif record['matches']:
-                result['AzuraCast'] = 'ok', 'En línea · título coincide en la última consulta'
-            else:
-                result['AzuraCast'] = 'warning', 'En línea · título diferente; puede haber retardo'
-        else:
-            result['AzuraCast'] = 'unknown', 'Esperando comprobación remota'
-    result['Zeno.fm'] = 'unknown', 'Encoder en RadioCaster · sin comprobación automática'
     return result

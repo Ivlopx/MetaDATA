@@ -38,13 +38,16 @@ def check_ffmpeg(configured='', audio_format='aac'):
     return executable
 
 
-def command_line(metadata, ffmpeg, audio_format='aac', hls=False):
+def command_line(metadata, ffmpeg, audio_format='aac', hls=False, *,
+                 use_variables=True, sample_rate=48000, channels=2, bitrate=128):
     if getattr(sys, 'frozen', False):
         raise EncoderError('El codificador requiere la instalación Python de consola.')
-    args = [radiocaster_executable(sys.executable), '-u', '-m', 'radio_metadata.aac_encoder',
+    args = [radiocaster_executable(sys.executable) if use_variables else sys.executable,
+            '-u', '-m', 'radio_metadata.aac_encoder',
             '--format', audio_format, '--metadata', str(Path(metadata).resolve()),
-            '--ffmpeg', str(ffmpeg), '--sample-rate', '{SampleRate}', '--channels', '{Channels}',
-            '--bitrate', '{Bitrate}']
+            '--ffmpeg', str(ffmpeg), '--sample-rate', '{SampleRate}' if use_variables else str(sample_rate),
+            '--channels', '{Channels}' if use_variables else str(channels),
+            '--bitrate', '{Bitrate}' if use_variables else str(bitrate)]
     if hls:
         if audio_format != 'aac':
             raise EncoderError('La prueba HLS requiere AAC.')

@@ -215,6 +215,26 @@ class IntegrationTests(unittest.TestCase):
                 self.assertIsNone(engine.monitor)
             engine.close()
 
+    def test_real_engine_ignores_retired_direct_destinations_in_old_profiles(self):
+        from radio_metadata.credentials import MemoryCredentials
+        for legacy in [dict(azuracast_write_enabled=True, remote_monitor_enabled=True),
+                       dict(icecast_targets=[dict(url='https://radio.example', mount='/test', enabled=True)],
+                            remote_monitor_enabled=True)]:
+            config = Config(spotify_enabled=False, radioboss_enabled=False, **legacy)
+            with tempfile.TemporaryDirectory() as tmp:
+                with patch('httpx.Client', side_effect=AssertionError('Retired remote request')), \
+                     patch('httpx.AsyncClient', side_effect=AssertionError('Retired remote request')):
+                    engine = Engine(config, Path(tmp), credentials=MemoryCredentials())
+                    try:
+                        decision, snapshots, statuses, _ = asyncio.run(engine.tick())
+                        self.assertIsNone(decision.song)
+                        self.assertFalse(snapshots)
+                        self.assertEqual(engine.outputs, [])
+                        self.assertIsNone(engine.monitor)
+                        self.assertTrue((Path(tmp) / 'output/nowplaying.json').exists())
+                    finally:
+                        engine.close()
+
     def test_rejects_insecure_or_ambiguous_publish_configuration(self):
         cases = [replace(self.config, webdav_enabled=True), replace(self.config, webdav_public_url='http://cdn.example'),
                  replace(self.config, azuracast_write_enabled=True, azuracast_url='http://radio.example'),

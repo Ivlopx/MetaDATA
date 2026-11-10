@@ -158,12 +158,15 @@ def radiocaster_executable(path):
     raise EncoderError('RadioCaster necesita una ruta de Python sin espacios. Windows no ofrece una ruta abreviada para esta instalación; reinstala la app en una carpeta sin espacios.')
 
 
-def command_line(metadata, ffmpeg):
+def command_line(metadata, ffmpeg, *, use_variables=True, sample_rate=48000, channels=2, bitrate=128):
     if getattr(sys, 'frozen', False):
         raise EncoderError('La prueba requiere la instalación Python; el EXE gráfico no sirve como codificador de consola.')
-    return subprocess.list2cmdline([radiocaster_executable(sys.executable), '-u', '-m', 'radio_metadata.ogg_encoder',
+    return subprocess.list2cmdline([radiocaster_executable(sys.executable) if use_variables else sys.executable,
+        '-u', '-m', 'radio_metadata.ogg_encoder',
         '--metadata', str(Path(metadata).resolve()), '--ffmpeg', str(ffmpeg),
-        '--sample-rate', '{SampleRate}', '--channels', '{Channels}', '--bitrate', '{Bitrate}'])
+        '--sample-rate', '{SampleRate}' if use_variables else str(sample_rate),
+        '--channels', '{Channels}' if use_variables else str(channels),
+        '--bitrate', '{Bitrate}' if use_variables else str(bitrate)])
 
 
 def encode(metadata, sample_rate, channels, bitrate, executable, input_stream=None, output_stream=None):

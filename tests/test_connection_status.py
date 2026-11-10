@@ -14,22 +14,18 @@ class ConnectionStatusTests(unittest.TestCase):
         config.spotify_enabled = False
         self.assertEqual(connection_states(config, [], [], [])['Spotify'], ('unknown', 'Desactivado'))
 
-    def test_file_success_never_claims_encoder_or_zeno_connection(self):
+    def test_file_success_never_claims_broadcast_connection(self):
         states = connection_states(Config(), [], [], [], local_exists=True)
-        self.assertEqual(states['RadioCaster'][0], 'warning')
-        self.assertIn('sin comprobar', states['RadioCaster'][1])
-        self.assertEqual(states['Zeno.fm'][0], 'unknown')
+        self.assertEqual(states['Now Playing'][0], 'warning')
+        self.assertIn('sin comprobar', states['Now Playing'][1])
+        self.assertEqual(set(states), {'RadioBOSS', 'Spotify', 'Now Playing'})
         failed = connection_states(Config(), [], ['Error de salida local: prueba'], [], local_exists=True)
-        self.assertEqual(failed['RadioCaster'][0], 'error')
+        self.assertEqual(failed['Now Playing'][0], 'error')
 
-    def test_remote_states_use_actual_observation_and_detect_mismatch(self):
+    def test_legacy_remote_settings_do_not_restore_removed_connections(self):
         config = Config(remote_monitor_enabled=True)
         record = dict(service='AzuraCast', online=True, error='', matches=True)
-        self.assertEqual(connection_states(config, [], [], [record])['AzuraCast'][0], 'ok')
-        record['matches'] = False
-        self.assertEqual(connection_states(config, [], [], [record])['AzuraCast'][0], 'warning')
-        record['error'] = 'HTTPStatusError'
-        self.assertEqual(connection_states(config, [], [], [record])['AzuraCast'][0], 'error')
+        self.assertEqual(set(connection_states(config, [], [], [record])), {'RadioBOSS', 'Spotify', 'Now Playing'})
 
     def test_demo_and_paused_metadata_do_not_claim_live_connections(self):
         config = Config(radioboss_enabled=True)

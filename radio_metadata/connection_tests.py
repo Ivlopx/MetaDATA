@@ -43,7 +43,7 @@ async def check_connection(name, config, credentials, directory):
             if result.error:
                 return False, result.error
             return True, 'Windows respondió. ' + ('Sesión Spotify reproduciendo.' if result.playing else 'Abre Spotify y reproduce una canción para comprobar sus datos.')
-        if name == 'RadioCaster':
+        if name in ('Now Playing', 'RadioCaster'):
             path = Path(directory) / 'output' / 'nowplaying.xml'
             if not path.is_file():
                 return False, 'Todavía no existe el archivo de títulos. Inicia el modo real para generarlo.'
@@ -51,7 +51,7 @@ async def check_connection(name, config, credentials, directory):
             track = ET.fromstring(path.read_bytes()).find('TRACK')
             if track is None or 'CASTTITLE' not in track.attrib:
                 return False, 'El XML todavía no tiene el campo CASTTITLE. Espera a la siguiente actualización.'
-            return True, 'El XML y su campo CASTTITLE están disponibles. Comprueba en RadioCaster que esté seleccionado.'
+            return True, 'El XML y su campo CASTTITLE están disponibles. Comprueba que tu emisor lea el archivo y formato seleccionados.'
         if name == 'AzuraCast':
             def check():
                 headers = {}
@@ -91,7 +91,7 @@ async def check_connection(name, config, credentials, directory):
                     return False, 'Las estadísticas respondieron, pero ese mount no aparece online.'
                 return True, 'El mount aparece online. Esta consulta pública no verifica contraseña ni permiso para publicar títulos.'
             return await asyncio.wait_for(asyncio.to_thread(check), 8)
-        return True, 'Zeno.fm recibe la emisión mediante RadioCaster. Comprueba ese encoder en RadioCaster.'
+        return False, 'Servicio no disponible en esta aplicación.'
     except ModuleNotFoundError:
         return False, 'Falta un componente de Windows. Vuelve a ejecutar el instalador y reinicia la app.'
     except Exception:

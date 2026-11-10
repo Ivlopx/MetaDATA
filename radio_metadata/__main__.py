@@ -7,7 +7,7 @@ import sys
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Metadatos de estación para RadioCaster")
+    parser = argparse.ArgumentParser(description="Metadatos de estación para aplicaciones de transmisión")
     parser.add_argument("--demo", action="store_true", help="datos sintéticos; sin conexiones externas")
     parser.add_argument("--data-dir", type=Path, help="carpeta de configuración, historial y salidas")
     args = parser.parse_args()
