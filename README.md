@@ -1,4 +1,6 @@
-# MetaDATA · versión 0.3.0
+# MetaDATA · copia de prueba 0.4.0a1
+
+**Rama experimental:** consulta primero [Prueba Ogg para Windows](docs/PRUEBA-OGG-WINDOWS.md). Usa una carpeta y perfil separados de la versión estable; no sustituye aún la emisión al aire. Incluye codificador externo, botones para copiar/abrir rutas, carpeta `covers`, caché ligada al historial visible e indicadores de conexión.
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos; el audio continúa por Windows → FXSound → consola → USB → RadioCaster.
 
@@ -16,7 +18,7 @@ git pull
 .\iniciar.bat
 ```
 
-La configuración y el historial se conservan. Las configuraciones v1/v2 migran al esquema 3 con una copia `config.v1.backup.json` o `config.v2.backup.json`. No reemplaces tu configuración con el ejemplo si ya la personalizaste.
+La configuración y el historial se conservan. Las configuraciones v1/v2/v3 migran al esquema 4 con una copia `config.v1.backup.json` , `config.v2.backup.json` o `config.v3.backup.json`. No reemplaces tu configuración con el ejemplo si ya la personalizaste.
 
 Instalación manual, dentro de la carpeta del proyecto:
 
@@ -37,7 +39,7 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 5. **Conexiones → RadioCaster** muestra el archivo que debes seleccionar en RadioCaster → Settings → Metadata → **Read from XML file**. En **Title Format** escribe `{TRACK[CASTTITLE]}`. Normalmente es:
 
    ```text
-   %LOCALAPPDATA%\RadioMetadataManager\output\nowplaying.xml
+   %LOCALAPPDATA%\RadioMetadataManager-OggPrueba\output\nowplaying.xml
    ```
 
    El TXT continúa disponible para **Read from file** con primera línea y UTF-8, si prefieres mantener esa entrada.
@@ -69,7 +71,7 @@ Por compatibilidad se siguen leyendo las variables de entorno de instalaciones a
 
 ## Historial y límites
 
-El historial registra fecha/hora, fuente, artista, título, álbum y año solo de canciones válidas. **Exportar CSV** exporta todo el historial, aunque la tabla muestre las 200 canciones más recientes. Las últimas tres aparecen en Inicio.
+El historial registra fecha/hora, fuente, artista, título, álbum y año solo de canciones válidas. **Exportar CSV** exporta todo el historial, aunque la tabla muestre las canciones recientes según el límite elegido (200 inicialmente). Las últimas tres aparecen en Inicio. En Ajustes → Música puedes elegir cuántas mostrar y el espacio de su caché de portadas; esto no borra el historial SQLite de texto.
 
 La selección se calcula con estado, prioridad, carpetas y exclusiones. No identifica infaliblemente la señal al aire después de la consola ni reconoce acústicamente anuncios. Una publicidad mal etiquetada en una carpeta musical puede pasar los filtros: corrige su clasificación y activa Pausar metadatos antes del bloque.
 
@@ -90,7 +92,7 @@ Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INT
 
 ## Datos y arquitectura
 
-La carpeta predeterminada es `%LOCALAPPDATA%\RadioMetadataManager`. La opción `--data-dir C:\ruta` permite cambiarla; contiene configuración, historial SQLite, registros rotativos y salidas. Las claves viven aparte en Windows. Los nombres de imágenes dependen de su contenido; la caché local conserva aproximadamente 40 imágenes además de las actuales.
+La carpeta predeterminada es `%LOCALAPPDATA%\RadioMetadataManager-OggPrueba`. La opción `--data-dir C:\ruta` permite cambiarla; contiene configuración, historial SQLite, registros rotativos y salidas. Las claves viven aparte en Windows. Los nombres de imágenes dependen de su contenido; las imágenes se guardan en `covers`, se vinculan a las canciones visibles y respetan el tope de espacio, protegiendo la portada y el logo actuales.
 
 | Módulo | Responsabilidad |
 | --- | --- |
@@ -112,7 +114,7 @@ $env:RADIO_GUI_TEST = '1'
 
 Las variables anteriores son solo para desarrollar y ejecutar pruebas, no para configurar claves. Las integraciones remotas se prueban con respuestas simuladas. La ejecución nativa de credenciales, tema y conectores Windows debe verificarse en Windows 11.
 
-Construye el ejecutable **en Windows**, con Python 3.11 x64:
+Los siguientes comandos construyen la ventana gráfica; no empaquetan el complemento Ogg como ejecutable de consola. Para esta prueba utiliza la instalación Python descrita en la guía. Construye la ventana **en Windows**, con Python 3.11 x64:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install '.[build]'

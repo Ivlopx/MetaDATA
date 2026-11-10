@@ -30,6 +30,7 @@ class Engine:
     def configure(self, config):
         config.validate()
         self.config = config
+        self.cache_history = self.history.recent_artwork_files(config.history_visible_limit)
         self.outputs = [] if self.demo else [IcecastOutput(t, self.credentials) for t in config.icecast_targets if t.get('enabled', False)]
         if config.azuracast_write_enabled and not self.demo:
             self.outputs.append(AzuraCastOutput(config, self.credentials))
@@ -50,7 +51,7 @@ class Engine:
     async def publish(self, decision):
         statuses, state = [], None
         try:
-            state = await asyncio.to_thread(self.local.publish, decision, self.config)
+            state = await asyncio.to_thread(self.local.publish, decision, self.config, self.cache_history)
         except Exception as error:
             log.error('Salida local: %s', type(error).__name__)
             statuses.append('Error de salida local: RadioCaster podría conservar el título anterior')
@@ -85,6 +86,7 @@ class Engine:
         errors = []
         try:
             self.history.record(decision)
+            self.cache_history = self.history.recent_artwork_files(self.config.history_visible_limit)
         except Exception as error:
             log.error('Historial: %s', type(error).__name__)
             errors.append('No se pudo guardar el historial')
@@ -95,7 +97,7 @@ class Engine:
             log.info('Selección: %s; %s; conflicto=%s', decision.source, decision.reason, decision.conflict)
             self.last_state = decision.source, decision.reason, decision.conflict
         try:
-            rows = self.history.recent()
+            rows = self.history.recent(self.config.history_visible_limit)
         except Exception:
             rows = []
         return decision, snapshots, errors + statuses, rows

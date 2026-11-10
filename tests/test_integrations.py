@@ -42,7 +42,7 @@ class IntegrationTests(unittest.TestCase):
             raw = json.dumps(original).encode()
             store.path.write_bytes(raw)
             loaded = store.load()
-            self.assertEqual(loaded.version, 3)
+            self.assertEqual(loaded.version, 4)
             self.assertEqual(loaded.priority, 'spotify')
             self.assertFalse(loaded.webdav_enabled)
             self.assertFalse(loaded.azuracast_write_enabled)
@@ -146,15 +146,16 @@ class IntegrationTests(unittest.TestCase):
             requests = []
             def handler(request):
                 requests.append(request)
-                self.assertEqual(request.method, 'PUT')
+                self.assertIn(request.method, ('MKCOL', 'PUT'))
                 return httpx.Response(201)
             with self.client(handler), patch.dict(os.environ, METADATA_WEBDAV_PASSWORD='fake'):
                 output.send(self.decision, state)
-            self.assertTrue(requests[0].url.path.endswith('.png'))
+            self.assertEqual(requests[0].method, 'MKCOL')
+            self.assertTrue(requests[1].url.path.endswith('.png'))
             self.assertTrue(requests[-1].url.path.endswith('/nowplaying.json'))
             public = json.loads(requests[-1].content)
             self.assertEqual(public['album'], 'Álbum & <vivo>')
-            self.assertTrue(output.artwork_url.startswith('https://cdn.example/radio/artwork-'))
+            self.assertTrue(output.artwork_url.startswith('https://cdn.example/radio/covers/artwork-'))
             self.assertNotIn('fake', requests[-1].content.decode())
             self.assertNotIn('filename', public)
             ad = resolve([], config)

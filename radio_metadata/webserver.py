@@ -49,8 +49,11 @@ class LocalServer:
                             mime, data = 'text/plain; charset=utf-8', (state['text'] + '\n').encode('utf-8')
                         else:
                             mime, data = 'application/xml; charset=utf-8', xml_state(state)
-                    elif re.fullmatch(r'/artwork-[a-f0-9]{24}\.(png|jpg|webp)', path):
-                        data = (directory / path[1:]).read_bytes()
+                    elif re.fullmatch(r'/(?:covers/)?artwork-[a-f0-9]{24}\.(png|jpg|webp)', path):
+                        asset = directory / path[1:]
+                        if not asset.exists() and '/' not in path[1:]:
+                            asset = directory / 'covers' / path[1:]
+                        data = asset.read_bytes()
                         kind = image_type(data)
                         if kind:
                             mime = kind[1]

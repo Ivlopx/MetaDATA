@@ -131,3 +131,38 @@ class GuiTests(unittest.TestCase):
                 self.assertEqual(window.mode.currentData(), 'auto')
             finally:
                 window.quit()
+
+    def test_export_paths_can_be_copied_and_folder_opened_from_main_and_settings(self):
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QApplication
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow, SettingsDialog
+        from radio_metadata.output_files import OutputFilesWidget
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            config = store.load()
+            window = MainWindow(store, config, demo=True)
+            try:
+                window.worker.stop(); window.worker.wait()
+                files = window.output_files
+                self.assertTrue(files.path.isReadOnly())
+                files.copy_button.click()
+                self.assertEqual(app.clipboard().text(), str((Path(tmp) / 'demo-output' / 'nowplaying.xml').resolve()))
+                files.kind.setCurrentIndex(1)
+                files.copy_button.click()
+                self.assertTrue(app.clipboard().text().endswith('nowplaying.txt'))
+                with patch('radio_metadata.output_files.QDesktopServices.openUrl', return_value=True) as opened:
+                    files.open_button.click()
+                    self.assertEqual(opened.call_args.args[0].toLocalFile(), str((Path(tmp) / 'demo-output').resolve()))
+                dialog = SettingsDialog(config, window, page='RadioCaster')
+                self.assertTrue(dialog.findChildren(OutputFilesWidget))
+                dialog.fields['history_visible_limit'].setValue(30)
+                dialog.fields['cover_cache_mb'].setValue(64)
+                dialog.fields['ogg_ffmpeg_path'].setText('C:/Program Files/FFmpeg/ffmpeg.exe')
+                dialog.save()
+                self.assertEqual(dialog.result_config.history_visible_limit, 30)
+                self.assertEqual(dialog.result_config.cover_cache_mb, 64)
+                self.assertIn('{SampleRate}', dialog.ogg_command.text())
+            finally:
+                window.quit()

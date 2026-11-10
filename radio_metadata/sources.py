@@ -100,7 +100,7 @@ class RadioBossSource:
                        artwork_origin="radioboss_tag" if art else "")
 
     async def poll(self):
-        return await self._poll()
+        return replace(await self._poll(), available=True)
 
 
 class SpotifyWindowsSource:
@@ -126,7 +126,7 @@ class SpotifyWindowsSource:
         if len(playing) > 1:
             return Snapshot(self.name, error="Varias sesiones Spotify reproduciendo; selecciona una en Windows")
         if not playing:
-            return Snapshot(self.name)
+            return Snapshot(self.name, available=bool(sessions))
         session = playing[0]
         media = await session.try_get_media_properties_async()
         kind = "music" if media.playback_type == MediaPlaybackType.MUSIC else "unknown"

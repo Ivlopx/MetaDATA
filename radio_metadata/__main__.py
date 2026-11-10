@@ -11,7 +11,7 @@ def main():
     parser.add_argument("--demo", action="store_true", help="datos sintéticos; sin conexiones externas")
     parser.add_argument("--data-dir", type=Path, help="carpeta de configuración, historial y salidas")
     args = parser.parse_args()
-    directory = args.data_dir or Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".local" / "share"))) / "RadioMetadataManager"
+    directory = args.data_dir or Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".local" / "share"))) / "RadioMetadataManager-OggPrueba"
     directory.mkdir(parents=True, exist_ok=True)
     handler = RotatingFileHandler(directory / "app.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
@@ -25,7 +25,7 @@ def main():
     from .appearance import apply_appearance
 
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("Radio Metadata Manager")
+    app.setApplicationName("MetaDATA · Prueba Ogg")
     lock = QLockFile(str(directory / "app.lock"))
     if not lock.tryLock(0):
         QMessageBox.information(None, "Radio Metadata", "Ya existe una instancia usando esta carpeta de datos.")

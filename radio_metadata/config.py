@@ -22,7 +22,10 @@ def atomic_write(path: Path, data: bytes):
 
 @dataclass
 class Config:
-    version: int = 3
+    version: int = 4
+    ogg_ffmpeg_path: str = ""
+    history_visible_limit: int = 200
+    cover_cache_mb: int = 128
     theme: str = "system"
     managed_credentials: list[str] = field(default_factory=list)
     station_name: str = "Mi estación"
@@ -74,8 +77,10 @@ class Config:
                 raise ValueError(f"Tipo inválido para {key}")
         if not all(isinstance(key, str) and key for key in self.managed_credentials):
             raise ValueError("Referencias de credenciales inválidas")
-        if self.version != 3:
+        if self.version != 4:
             raise ValueError("Versión de configuración no compatible")
+        if not 10 <= self.history_visible_limit <= 1000 or not 8 <= self.cover_cache_mb <= 4096:
+            raise ValueError("Historial: 10–1000 canciones; caché: 8–4096 MB")
         if self.theme not in ("system", "light", "dark"):
             raise ValueError("Tema inválido")
         if type(self.poll_seconds) is not int or not 1 <= self.poll_seconds <= 30:
@@ -156,10 +161,10 @@ class ConfigStore:
         if not isinstance(values, dict):
             raise ValueError("La configuración debe ser un objeto JSON")
         old_version = values.get("version", 1)
-        migrate = old_version in (1, 2)
+        migrate = old_version in (1, 2, 3)
         if migrate:
             original = self.path.read_bytes()
-            values["version"] = 3
+            values["version"] = 4
         config = Config(**values)
         config.validate()
         if migrate:

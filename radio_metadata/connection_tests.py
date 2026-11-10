@@ -19,6 +19,13 @@ class OverlayCredentials:
 
 async def check_connection(name, config, credentials, directory):
     try:
+        if name == 'Codificador Ogg':
+            from .ogg_encoder import check_ffmpeg, EncoderError
+            try:
+                await asyncio.to_thread(check_ffmpeg, config.ogg_ffmpeg_path)
+                return True, 'FFmpeg incluye libopus. Esta comprobación no abre RadioCaster ni emite audio.'
+            except EncoderError as error:
+                return False, str(error)
         if name == 'RadioBOSS':
             source = RadioBossSource(config, credentials)
             result = await asyncio.wait_for(source.poll(), 12)

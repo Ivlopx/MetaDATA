@@ -1,3 +1,5 @@
+> Esta rama es una copia experimental con perfil separado. Consulta [Prueba Ogg para Windows](PRUEBA-OGG-WINDOWS.md) antes de configurar RadioCaster.
+
 # Conectar con la estación
 
 La demo y la interfaz no necesitan credenciales reales. Para la primera prueba en Windows se requieren estos datos **cuando se vaya a conectar**, no para probar el proyecto:
@@ -138,3 +140,7 @@ Los campos de canción se vacían en pausas; el logo no se publica como una pist
 ## Entrada XML preparada para RadioCaster
 
 Selecciona `output/nowplaying.xml` en Read from XML file y usa `{TRACK[CASTTITLE]}` en Title Format. CASTTITLE contiene Artista - Canción únicamente durante música válida, y queda vacío en pausas. ARTIST, TITLE, ALBUM y demás atributos se conservan por separado. Evita una plantilla con guion fijo entre dos atributos vacíos. Esto formatea el texto que envía RadioCaster; no convierte álbum o imagen en metadatos adicionales del stream. Read from URL está documentado como lectura de texto; no se presupone un lector JSON ni XML remoto. La entrada XML real y el tratamiento del título vacío se deben verificar en Windows/RadioCaster.
+
+## Carpeta covers y rutas
+
+Las imágenes se publican bajo `covers/`; TXT, XML, JSON y el reproductor permanecen en la raíz de salida. En Inicio y Conexiones → RadioCaster hay selección de formato, ruta seleccionable, Copiar ruta y Abrir carpeta. El servidor local también acepta las direcciones antiguas de imágenes mientras la imagen siga en caché. WebDAV crea o comprueba la carpeta `covers`; los límites de Ajustes → Música son locales y no eliminan archivos remotos.

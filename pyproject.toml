@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "radio-metadata-manager"
-version = "0.3.0"
+version = "0.4.0a1"
 description = "Administrador local de metadatos para RadioCaster"
 requires-python = ">=3.11"
 dependencies = [
@@ -25,3 +25,6 @@ radio-metadata = "radio_metadata.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["radio_metadata*"]
+
+[tool.setuptools.package-data]
+radio_metadata = ["assets/*.svg", "assets/*.png", "assets/README.md"]

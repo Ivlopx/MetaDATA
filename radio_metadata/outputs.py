@@ -13,20 +13,9 @@ from defusedxml import ElementTree as ET
 import httpx
 
 from .config import atomic_write
+from .image_cache import image_type, asset_name, migrate_images, prune_images
 from .model import clean
 from . import __version__
-
-
-def image_type(data):
-    if not data or len(data) > 4 * 1024 * 1024:
-        return None
-    if data.startswith(b'\x89PNG\r\n\x1a\n'):
-        return 'png', 'image/png'
-    if data.startswith(b'\xff\xd8\xff'):
-        return 'jpg', 'image/jpeg'
-    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
-        return 'webp', 'image/webp'
-    return None
 
 
 def xml_state(state):
@@ -47,18 +36,21 @@ class LocalOutput:
         kind = image_type(data)
         if not kind:
             return ''
-        name = f'artwork-{hashlib.sha256(data).hexdigest()[:24]}.{kind[0]}'
+        name = asset_name(data)
         path = self.directory / name
         if not path.exists():
             atomic_write(path, data)
         return name
 
-    def publish(self, decision, config):
+    def publish(self, decision, config, retained_images=None):
+        migrate_images(self.directory)
         track = decision.song
         logo = b''
         if config.logo_path:
             try:
                 path = Path(config.logo_path)
+                if not path.exists() and path.parent.resolve() == self.directory.resolve():
+                    path = self.directory / 'covers' / path.name
                 if path.stat().st_size <= 4 * 1024 * 1024:
                     logo = path.read_bytes()
             except OSError:
@@ -88,11 +80,8 @@ class LocalOutput:
         player = self.directory / 'player.html'
         if not player.exists() or player.read_bytes() != PLAYER_HTML.encode('utf-8'):
             atomic_write(player, PLAYER_HTML.encode('utf-8'))
-        keep = {state['artwork_file'], logo_file}
-        files = sorted(self.directory.glob('artwork-*.*'), key=lambda p: p.stat().st_mtime, reverse=True)
-        for old in files[40:]:
-            if old.name not in keep:
-                old.unlink(missing_ok=True)
+        prune_images(self.directory, {state['artwork_file'], logo_file}, retained_images,
+                     config.history_visible_limit + 2, config.cover_cache_mb * 1024 * 1024)
         return state
 
 
@@ -200,6 +189,7 @@ class WebDavOutput(RetryingOutput):
         self.uploaded_images = set()
         self.artwork_url = ''
         self.player_uploaded = False
+        self.covers_ready = False
         self.refresh_seconds = min(10, config.stale_seconds / 3)
 
     def key(self, decision, state):
@@ -225,6 +215,12 @@ class WebDavOutput(RetryingOutput):
             def put(name, data, mime):
                 result = client.put(upload + '/' + name, content=data, auth=auth, headers={'Content-Type': mime})
                 result.raise_for_status()
+            if not self.covers_ready:
+                folder = client.request('MKCOL', upload + '/covers', auth=auth)
+                if folder.status_code == 405:
+                    folder = client.request('PROPFIND', upload + '/covers/', auth=auth, headers={'Depth': '0'})
+                folder.raise_for_status()
+                self.covers_ready = True
             for name in {state['artwork_file'], state['logo_file']} - {''}:
                 if name not in self.uploaded_images:
                     data = (self.directory / name).read_bytes()

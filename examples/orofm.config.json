@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "station_name": "ORO FM 88.1",
   "slogan": "¡Una radio que sí brilla!",
   "description": "",
@@ -55,5 +55,8 @@
   "webdav_username": "",
   "webdav_password_env": "METADATA_WEBDAV_PASSWORD",
   "theme": "system",
-  "managed_credentials": []
+  "managed_credentials": [],
+  "ogg_ffmpeg_path": "",
+  "history_visible_limit": 200,
+  "cover_cache_mb": 128
 }

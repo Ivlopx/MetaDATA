@@ -27,6 +27,7 @@ class Snapshot:
     position_ms: int | None = None
     track_number: int | None = None
     artwork_origin: str = ""
+    available: bool | None = None
 
 
 @dataclass(frozen=True)

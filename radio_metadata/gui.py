@@ -13,7 +13,9 @@ from PySide6.QtWidgets import (
     QTabWidget, QVBoxLayout, QWidget,
 )
 
-from .appearance import apply_appearance, source_name
+from .output_files import OutputFilesWidget
+from .appearance import apply_appearance, source_name, brand_icon, status_pixmap
+from .connection_status import connection_states
 from .credentials import WindowsCredentials, MemoryCredentials
 from .settings import SettingsDialog
 from .engine import Engine
@@ -51,7 +53,7 @@ class Worker(QThread):
             engine = Engine(self.config, self.directory, self.demo, self.credentials)
             engine.mode_provider = lambda: self.requested_mode
             # Clear stale text from the previous execution before the first network request.
-            engine.local.publish(resolve([], engine.config), engine.config)
+            engine.local.publish(resolve([], engine.config), engine.config, engine.cache_history)
             while not self.stopping.is_set():
                 self.wake.clear()
                 while True:
@@ -99,7 +101,7 @@ class MainWindow(QMainWindow):
         self.credentials = MemoryCredentials() if demo else WindowsCredentials(store.directory)
         self.history_rows = []
         self.exiting = False
-        self.setWindowTitle('MetaDATA' + (' · Demostración' if demo else ''))
+        self.setWindowTitle('MetaDATA · Prueba Ogg' + (' · Demostración' if demo else ''))
         self.resize(960, 680)
         self.setMinimumSize(760, 560)
         self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolume))
@@ -159,7 +161,7 @@ class MainWindow(QMainWindow):
         controls.addWidget(QLabel('Fuente'))
         self.mode = QComboBox()
         for label, value in [('Automático', 'auto'), ('Solo RadioBOSS', 'radioboss'), ('Solo Spotify', 'spotify'), ('Pausar metadatos', 'station')]:
-            self.mode.addItem(label, value)
+            self.mode.addItem(brand_icon(value), label, value)
         controls.addWidget(self.mode)
         self.station_button = QPushButton('Pausar metadatos')
         self.station_button.clicked.connect(self.toggle_station)
@@ -200,6 +202,7 @@ class MainWindow(QMainWindow):
         connections = page('Conexiones')
         connections.addWidget(QLabel('Fuentes de información y destinos de la estación'))
         self.connection_labels = {}
+        self.connection_dots = {}
         for name, destination, description in [
             ('RadioBOSS', 'RadioBOSS', 'Estado y metadatos mediante la API local'),
             ('Spotify', 'Spotify', 'Sesión multimedia de esta computadora'),
@@ -207,9 +210,17 @@ class MainWindow(QMainWindow):
             ('AzuraCast', 'AzuraCast', 'Monitoreo y publicación opcional por API'),
             ('Zeno.fm', 'RadioCaster', 'Emisión secundaria mediante RadioCaster')]:
             row = QHBoxLayout()
+            icon = QLabel()
+            icon.setPixmap(brand_icon(name).pixmap(24, 24))
+            row.addWidget(icon)
             label = QLabel(name)
             label.setMinimumWidth(100)
             row.addWidget(label)
+            dot = QLabel()
+            dot.setPixmap(status_pixmap('unknown'))
+            dot.setProperty('state', 'unknown')
+            row.addWidget(dot)
+            self.connection_dots[name] = dot
             status = QLabel(description)
             status.setWordWrap(True)
             row.addWidget(status, 1)
@@ -236,7 +247,7 @@ class MainWindow(QMainWindow):
 
         settings_page = page('Ajustes')
         for name, description in [('Estación', 'Nombre, mensajes, logo y apariencia'), ('Música', 'Prioridad, carpetas y exclusiones'),
-                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Icecast directo', 'Destinos opcionales'),
+                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Icecast directo', 'Destinos opcionales'), ('Codificador Ogg', 'Preparar el complemento de prueba para RadioCaster'),
                                   ('Avanzados', 'Intervalos, monitoreo y reproductor')]:
             row = QHBoxLayout()
             label = QLabel(description)
@@ -254,9 +265,10 @@ class MainWindow(QMainWindow):
             'Los anuncios, promos y jingles excluidos vacían los datos publicados y no entran al historial musical. '
             'La selección no identifica de forma infalible el audio de la consola.')
         settings_page.addWidget(self.guide, 1)
-        self.output_label = QLabel('XML para RadioCaster: ' + str(store.directory / ('demo-output' if demo else 'output') / 'nowplaying.xml') + ' · Formato: {TRACK[CASTTITLE]}')
+        self.output_files = OutputFilesWidget(store.directory / ('demo-output' if demo else 'output'))
+        layout.addWidget(self.output_files)
+        self.output_label = QLabel('')
         self.output_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.output_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.output_label.setWordWrap(True)
         layout.addWidget(self.output_label)
         self.tray = QSystemTrayIcon(self.windowIcon(), self)
@@ -274,7 +286,7 @@ class MainWindow(QMainWindow):
         self.mode.currentIndexChanged.connect(lambda: self.worker.command('mode', self.mode.currentData()))
         self.mode.currentIndexChanged.connect(lambda: self.station_button.setText('Reanudar automático' if self.mode.currentData() == 'station' else 'Pausar metadatos'))
         self.worker.updated.connect(self.update_state)
-        self.worker.failed.connect(lambda message: self.output_label.setText(message))
+        self.worker.failed.connect(self.report_failure)
         self.worker.start()
 
     @staticmethod
@@ -368,16 +380,14 @@ class MainWindow(QMainWindow):
         for i, row in enumerate(rows[:3]):
             for j, value in enumerate((self.display_time(row[0], short=True), row[2], row[3])):
                 self.recent.setItem(i, j, QTableWidgetItem(str(value or '')))
-        for snapshot in snapshots:
-            name = 'RadioBOSS' if snapshot.source == 'radioboss' else 'Spotify'
-            if name in self.connection_labels:
-                self.connection_labels[name].setText(snapshot.error or ('Reproduciendo' if snapshot.playing else 'En pausa o detenido'))
-        observed = {snapshot.source for snapshot in snapshots}
-        for source, name, enabled in [('radioboss', 'RadioBOSS', self.config.radioboss_enabled), ('spotify', 'Spotify', self.config.spotify_enabled)]:
-            if source not in observed:
-                self.connection_labels[name].setText('Consulta suspendida durante la pausa de metadatos' if self.mode.currentData() == 'station' else ('Esperando consulta' if enabled else 'Desactivado'))
-        self.connection_labels['RadioCaster'].setText('Archivo local de títulos · comprueba su selección en RadioCaster')
-        self.connection_labels['AzuraCast'].setText('Monitoreo activado' if self.config.remote_monitor_enabled else 'Mediante RadioCaster · monitoreo desactivado')
+        evidence = connection_states(self.config, snapshots, statuses, extra[0] if extra else [],
+                                     demo=self.demo, mode=self.mode.currentData(),
+                                     local_exists=(self.output_files.directory / 'nowplaying.xml').is_file())
+        for name, (state, message) in evidence.items():
+            self.connection_labels[name].setText(message)
+            self.connection_dots[name].setPixmap(status_pixmap(state))
+            self.connection_dots[name].setProperty('state', state)
+            self.connection_dots[name].setAccessibleName(name + ': ' + message)
         self.history.setRowCount(len(rows))
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
@@ -386,6 +396,14 @@ class MainWindow(QMainWindow):
                 self.history.setItem(i, j, item)
         self.tray.setToolTip(("Radio Metadata • " + decision.text)[:120])
 
+    def report_failure(self, message):
+        self.output_label.setText(message)
+        for name, dot in self.connection_dots.items():
+            state = 'error' if name == 'RadioCaster' else 'unknown'
+            dot.setPixmap(status_pixmap(state))
+            dot.setProperty('state', state)
+            self.connection_labels[name].setText('Administrador detenido · estado sin actualizar')
+
     def settings(self, page='Estación'):
         dialog = SettingsDialog(self.config, self, store=self.settings_store, credentials=self.credentials, page=page, demo=self.demo)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -393,6 +411,7 @@ class MainWindow(QMainWindow):
             apply_appearance(QApplication.instance(), self.config.theme)
             self.worker.command('config', self.config)
             self.station.setText(self.config.station_name)
+            self.statusBar().showMessage('Ajustes guardados', 5000)
 
     def open_preview(self):
         if not self.config.local_server_enabled:

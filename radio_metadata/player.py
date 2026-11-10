@@ -11,7 +11,7 @@ small{display:block;color:CanvasText;margin-top:14px}img[hidden]{display:none}
 <h2 id="title">Conectando…</h2><p id="artist"></p><p id="album"></p><audio id="audio" controls preload="none"></audio>
 <small id="status">Actualizando información</small></main><script>
 const el=id=>document.getElementById(id);let latest=null,lastImage='';
-function imageUrl(value){if(!value)return '';if(/^artwork-[a-f0-9]+\.(png|jpg|webp)$/.test(value))return value;
+function imageUrl(value){if(!value)return '';if(/^(?:covers\/)?artwork-[a-f0-9]+\.(png|jpg|webp)$/.test(value))return value;
 try{let u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{return ''}}
 function paint(){if(!latest)return;let age=(Date.now()-Date.parse(latest.updated_at))/1000;
 let fresh=Number.isFinite(age)&&age>=-60&&age<=latest.stale_seconds;
