@@ -2,7 +2,7 @@
 
 Versión 0.4.0a3, 10 de noviembre de 2026. AAC es la ruta principal del proyecto; MP3 queda como respaldo. La salida Ogg sigue disponible para VLC y otros receptores compatibles.
 
-El [ensayo de AAC con portadas](INVESTIGACION-AAC-PORTADAS.md) validó una página de laboratorio con Chrome y hls.js. Esa página aún no está integrada en el reproductor local ni publicada en ORO FM.
+El [ensayo de AAC con portadas](INVESTIGACION-AAC-PORTADAS.md) validó una página de laboratorio con Chrome y hls.js. Esa página aún no está integrada en el reproductor local ni publicada en un servidor.
 
 ## Qué está implementado
 
@@ -49,7 +49,7 @@ Los archivos de HLS usan **Packed Audio** con timestamp PRIV de 90 kHz e ID3v2.4
 
 ## Lo que falta para una salida pública
 
-Esta versión genera y sirve HLS solo en la computadora local. **No publica ni sube los segmentos HLS al servidor de ORO FM**, ni modifica los puertos de Icecast o las opciones HLS de AzuraCast. El WebDAV existente publica Now Playing y sus imágenes, no esta secuencia de segmentos y listas.
+Esta versión genera y sirve HLS solo en la computadora local. **No publica ni sube los segmentos HLS a un servidor remoto**, ni modifica los puertos de Icecast o las opciones HLS de AzuraCast. El WebDAV existente publica Now Playing y sus imágenes, no esta secuencia de segmentos y listas.
 
 Publicar HLS requiere alojamiento HTTP/HTTPS que preserve las listas y segmentos, y un reproductor que extraiga ID3/APIC y actualice su interfaz. Que un navegador o app pueda reproducir AAC no acredita que lea HLS o muestre su portada. Tampoco se actualiza automáticamente `song.art` de AzuraCast. Antes de producción faltan publicación continua, reproducción en navegadores, actualización de imágenes, pausas, reconexiones y pruebas prolongadas.
 

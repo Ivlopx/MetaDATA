@@ -172,7 +172,7 @@ class IntegrationTests(unittest.TestCase):
             seen.append(request.method)
             if '/api/nowplaying/' in request.url.path:
                 return httpx.Response(200, json={'is_online': True, 'now_playing': {'song': {'text': self.decision.text, 'album': 'Remote album', 'art': 'https://cover.example/a.png'}}})
-            return httpx.Response(200, json={'icestats': {'source': {'listenurl': 'https://orofm.live/listen/on-air/vocesdetepezala/orofm/stream.mp3', 'title': 'Other title'}}})
+            return httpx.Response(200, json={'icestats': {'source': {'listenurl': 'https://icecast.example:8000/live.mp3', 'title': 'Other title'}}})
         with self.client(handler):
             monitor = RemoteMonitor(self.config)
             records = monitor.poll(self.decision.text)

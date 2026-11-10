@@ -23,9 +23,9 @@ La prueba de interfaz recorre datos ampliados, historial de seis columnas, ajust
 
 El JavaScript del reproductor se ejecutó con un DOM simulado en Node: canción con álbum, mensaje/logo durante anuncio, caducidad con caída de actualizaciones y tratamiento de títulos como texto. No sustituye una prueba de audio real en un navegador Windows.
 
-Las escrituras remotas se simulan con transportes HTTP locales. No se publicaron títulos, imágenes ni ajustes en ORO FM durante las pruebas. La compatibilidad WebDAV requiere comprobar tanto la carpeta de subida como la URL pública del alojamiento elegido.
+Las escrituras remotas se simulan con transportes HTTP locales. La compatibilidad WebDAV requiere comprobar tanto la carpeta de subida como la URL pública del alojamiento elegido.
 
-Resultado final: **32 pruebas aprobadas**. Se construyó el paquete Python 0.2.0 correctamente. Además, el monitor nuevo realizó consultas reales de lectura a ORO FM: AzuraCast e Icecast estaban online y coincidían con el mensaje de estación esperado. Esto valida la lectura, no la publicación de una canción ni la sincronía con el audio.
+Resultado final: **32 pruebas aprobadas**. Se construyó el paquete Python 0.2.0 correctamente.
 
 ## Pendientes en Windows 11 y servicios reales
 

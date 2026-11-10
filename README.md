@@ -90,7 +90,7 @@ Además del TXT, se generan XML, JSON, imágenes y un reproductor HTML. Se conse
 
 AzuraCast, Zeno.fm y los destinos Icecast se configuran en el programa de transmisión. MetaDATA ya no presenta conexiones directas ni ejecuta sus antiguos escritores o monitor remoto, aunque estuvieran activados en un perfil anterior. Las credenciales antiguas no se eliminan; al guardar ajustes se desactivan sus indicadores de publicación. No cambia las conexiones existentes del emisor.
 
-Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INTEGRACIONES.md), [Novedades 0.3](docs/NOVEDADES-0.3.md) y [Validación](docs/VALIDACION.md). La [investigación original](outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) documenta las capacidades de ORO FM, RadioCaster, Icecast y AzuraCast.
+Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INTEGRACIONES.md), [Novedades 0.3](docs/NOVEDADES-0.3.md) y [Validación](docs/VALIDACION.md). La [investigación original](outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) documenta las capacidades de RadioCaster, Icecast y AzuraCast.
 
 ## Datos y arquitectura
 

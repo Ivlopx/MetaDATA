@@ -1,6 +1,6 @@
 # Validación de la copia experimental Ogg/Opus
 
-Fecha: 10 de noviembre de 2026. Se usaron FFmpeg 9.0.1 con libopus, Icecast 2.4.4 instalado localmente y las bibliotecas nativas de VLC en macOS. El servidor de pruebas escuchó únicamente en loopback y se cerró al terminar. No se conectó a la estación ORO FM ni se cambiaron encoders, datos o ajustes remotos.
+Fecha: 10 de noviembre de 2026. Se usaron FFmpeg 9.0.1 con libopus, Icecast 2.4.4 instalado localmente y las bibliotecas nativas de VLC en macOS. El servidor de pruebas escuchó únicamente en loopback y se cerró al terminar.
 
 ## Ensayo completo realizado
 

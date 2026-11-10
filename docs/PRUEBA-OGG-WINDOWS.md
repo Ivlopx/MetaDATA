@@ -2,7 +2,7 @@
 
 **Guía de Ogg/Opus experimental.** Desde 0.4.0a2 el formato principal es AAC, con MP3 de respaldo: [guía AAC/HLS](PRUEBA-AAC-WINDOWS.md). Ogg continúa disponible. Esta copia conserva RadioCaster para capturar el audio y mantener la conexión. Un codificador externo recibe ese audio, lee el JSON local de MetaDATA y devuelve una señal Ogg/Opus con artista, título, álbum y portada incorporados.
 
-La prueba de laboratorio pasó con Icecast 2.4.4 y VLC en macOS, usando audio sintético y una sola conexión de emisión. **Todavía no se ha validado dentro de RadioCaster en Windows ni en el Icecast-KH de ORO FM.** No se modificó la emisión real.
+La prueba de laboratorio pasó con Icecast 2.4.4 y VLC en macOS, usando audio sintético y una sola conexión de emisión. **Todavía no se ha validado dentro de RadioCaster en Windows ni en el Icecast-KH.** No se modificó la emisión real.
 
 ## Mantener separada la versión estable
 
