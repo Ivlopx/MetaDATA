@@ -9,7 +9,7 @@ La prueba de laboratorio pasó con Icecast 2.4.4 y VLC en macOS, usando audio si
 Clona la rama de prueba en una carpeta nueva, sin reutilizar la carpeta de tu instalación estable:
 
 ```powershell
-git clone --branch codex/ogg-encoder-prueba https://github.com/Ivlopx/MetaDATA.git MetaDATA-PruebaOgg
+git clone https://github.com/Ivlopx/MetaDATA.git MetaDATA-PruebaOgg
 cd MetaDATA-PruebaOgg
 .\instalar.bat
 .\demo.bat
