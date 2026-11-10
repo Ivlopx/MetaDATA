@@ -25,7 +25,7 @@ def main():
     from .appearance import apply_appearance
 
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("MetaDATA · Prueba Ogg")
+    app.setApplicationName("MetaDATA · Prueba de codificadores")
     lock = QLockFile(str(directory / "app.lock"))
     if not lock.tryLock(0):
         QMessageBox.information(None, "Radio Metadata", "Ya existe una instancia usando esta carpeta de datos.")

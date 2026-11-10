@@ -24,6 +24,8 @@ def atomic_write(path: Path, data: bytes):
 class Config:
     version: int = 4
     ogg_ffmpeg_path: str = ""
+    encoder_format: str = "aac"
+    encoder_hls_enabled: bool = False
     history_visible_limit: int = 200
     cover_cache_mb: int = 128
     theme: str = "system"
@@ -79,6 +81,10 @@ class Config:
             raise ValueError("Referencias de credenciales inválidas")
         if self.version != 4:
             raise ValueError("Versión de configuración no compatible")
+        if self.encoder_format not in ('aac', 'mp3', 'ogg'):
+            raise ValueError('Formato de codificador inválido')
+        if self.encoder_hls_enabled and self.encoder_format != 'aac':
+            raise ValueError('La prueba HLS requiere seleccionar AAC.')
         if not 10 <= self.history_visible_limit <= 1000 or not 8 <= self.cover_cache_mb <= 4096:
             raise ValueError("Historial: 10–1000 canciones; caché: 8–4096 MB")
         if self.theme not in ("system", "light", "dark"):

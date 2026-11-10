@@ -1,6 +1,6 @@
 # Prueba de Ogg/Opus con portadas en RadioCaster
 
-**Versión experimental 0.4.0a1.** Esta copia conserva RadioCaster para capturar el audio y mantener la conexión. Un codificador externo recibe ese audio, lee el JSON local de MetaDATA y devuelve una señal Ogg/Opus con artista, título, álbum y portada incorporados.
+**Guía de Ogg/Opus experimental.** Desde 0.4.0a2 el formato principal es AAC, con MP3 de respaldo: [guía AAC/HLS](PRUEBA-AAC-WINDOWS.md). Ogg continúa disponible. Esta copia conserva RadioCaster para capturar el audio y mantener la conexión. Un codificador externo recibe ese audio, lee el JSON local de MetaDATA y devuelve una señal Ogg/Opus con artista, título, álbum y portada incorporados.
 
 La prueba de laboratorio pasó con Icecast 2.4.4 y VLC en macOS, usando audio sintético y una sola conexión de emisión. **Todavía no se ha validado dentro de RadioCaster en Windows ni en el Icecast-KH de ORO FM.** No se modificó la emisión real.
 
@@ -30,7 +30,7 @@ La estable conserva `%LOCALAPPDATA%\RadioMetadataManager`. No uses `--data-dir` 
 Necesitas una compilación Windows x64 de **FFmpeg con libopus**. La página del proyecto enlaza los proveedores de binarios Windows: [descargas de FFmpeg](https://ffmpeg.org/download.html#build-windows).
 
 1. Descomprime FFmpeg en una carpeta fija, por ejemplo dentro de esta copia de prueba. No requiere definir variables de entorno.
-2. Abre MetaDATA → Ajustes → **Codificador Ogg**.
+2. Abre MetaDATA → Ajustes → **Codificador** y selecciona **Ogg/Opus — Experimental**.
 3. Pulsa **Elegir FFmpeg** y selecciona `ffmpeg.exe` en su carpeta `bin`.
 4. Pulsa **Comprobar codificador**. Solo verifica el programa y libopus: no emite audio ni cambia RadioCaster.
 5. Guarda y vuelve a la sección para pulsar **Copiar comando para RadioCaster**.

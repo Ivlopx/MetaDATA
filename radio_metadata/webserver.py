@@ -49,6 +49,11 @@ class LocalServer:
                             mime, data = 'text/plain; charset=utf-8', (state['text'] + '\n').encode('utf-8')
                         else:
                             mime, data = 'application/xml; charset=utf-8', xml_state(state)
+                    elif re.fullmatch(r'/hls/(?:live\.m3u8|segment-[a-f0-9]{16}-[0-9]{8}\.aac)', path):
+                        asset = directory / path[1:]
+                        if not asset.is_symlink() and not asset.parent.is_symlink():
+                            data = asset.read_bytes()
+                            mime = 'application/vnd.apple.mpegurl' if path.endswith('.m3u8') else 'audio/aac'
                     elif re.fullmatch(r'/(?:covers/)?artwork-[a-f0-9]{24}\.(png|jpg|webp)', path):
                         asset = directory / path[1:]
                         if not asset.exists() and '/' not in path[1:]:

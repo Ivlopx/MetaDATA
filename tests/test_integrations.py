@@ -225,6 +225,37 @@ class IntegrationTests(unittest.TestCase):
 
 
 class HttpServerTests(unittest.TestCase):
+    def test_hls_only_serves_generated_playlist_and_segments(self):
+        from urllib.error import HTTPError
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            hls = root / 'hls'
+            hls.mkdir()
+            name = 'segment-0123456789abcdef-00000000.aac'
+            (hls / 'live.m3u8').write_text('#EXTM3U\n' + name + '\n')
+            (hls / name).write_bytes(b'public audio segment')
+            (hls / 'private.txt').write_text('private')
+            server = LocalServer(root, 0)
+            base = server.url.replace('player.html', '')
+            try:
+                for path, mime in [('hls/live.m3u8', 'application/vnd.apple.mpegurl'),
+                                   ('hls/' + name, 'audio/aac')]:
+                    with urlopen(base + path, timeout=3) as response:
+                        self.assertEqual(response.headers['Content-Type'], mime)
+                        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                for path in ('hls/private.txt', 'hls/../config.json', 'hls/.encoder.lock'):
+                    with self.assertRaises(HTTPError):
+                        urlopen(base + path, timeout=3)
+                (hls / name).unlink()
+                try:
+                    (hls / name).symlink_to(hls / 'private.txt')
+                except OSError:
+                    return
+                with self.assertRaises(HTTPError):
+                    urlopen(base + 'hls/' + name, timeout=3)
+            finally:
+                server.close()
+
     def test_service_serves_selected_metadata_but_never_config_or_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

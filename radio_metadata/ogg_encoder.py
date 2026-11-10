@@ -139,10 +139,29 @@ def check_ffmpeg(configured=''):
     return executable
 
 
+def radiocaster_executable(path):
+    """RadioCaster 3.7 failed to launch quoted executable paths on Windows."""
+    path = str(path)
+    if sys.platform != 'win32' or ' ' not in path:
+        return path
+    import ctypes
+    from ctypes import wintypes
+    get_short = ctypes.WinDLL('kernel32', use_last_error=True).GetShortPathNameW
+    get_short.argtypes = (wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD)
+    get_short.restype = wintypes.DWORD
+    size = get_short(path, None, 0)
+    if size:
+        buffer = ctypes.create_unicode_buffer(size)
+        length = get_short(path, buffer, size)
+        if 0 < length < size and ' ' not in buffer.value:
+            return buffer.value
+    raise EncoderError('RadioCaster necesita una ruta de Python sin espacios. Windows no ofrece una ruta abreviada para esta instalación; reinstala la app en una carpeta sin espacios.')
+
+
 def command_line(metadata, ffmpeg):
     if getattr(sys, 'frozen', False):
         raise EncoderError('La prueba requiere la instalación Python; el EXE gráfico no sirve como codificador de consola.')
-    return subprocess.list2cmdline([sys.executable, '-u', '-m', 'radio_metadata.ogg_encoder',
+    return subprocess.list2cmdline([radiocaster_executable(sys.executable), '-u', '-m', 'radio_metadata.ogg_encoder',
         '--metadata', str(Path(metadata).resolve()), '--ffmpeg', str(ffmpeg),
         '--sample-rate', '{SampleRate}', '--channels', '{Channels}', '--bitrate', '{Bitrate}'])
 

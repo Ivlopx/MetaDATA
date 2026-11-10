@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
         self.credentials = MemoryCredentials() if demo else WindowsCredentials(store.directory)
         self.history_rows = []
         self.exiting = False
-        self.setWindowTitle('MetaDATA · Prueba Ogg' + (' · Demostración' if demo else ''))
+        self.setWindowTitle('MetaDATA · Prueba de codificadores' + (' · Demostración' if demo else ''))
         self.resize(960, 680)
         self.setMinimumSize(760, 560)
         self.setWindowIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolume))
@@ -247,7 +247,7 @@ class MainWindow(QMainWindow):
 
         settings_page = page('Ajustes')
         for name, description in [('Estación', 'Nombre, mensajes, logo y apariencia'), ('Música', 'Prioridad, carpetas y exclusiones'),
-                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Icecast directo', 'Destinos opcionales'), ('Codificador Ogg', 'Preparar el complemento de prueba para RadioCaster'),
+                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Icecast directo', 'Destinos opcionales'), ('Codificador', 'AAC principal, MP3 de respaldo y prueba HLS con portada'),
                                   ('Avanzados', 'Intervalos, monitoreo y reproductor')]:
             row = QHBoxLayout()
             label = QLabel(description)

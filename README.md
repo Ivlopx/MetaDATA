@@ -1,6 +1,8 @@
-# MetaDATA · copia de prueba 0.4.0a1
+# MetaDATA · copia de prueba 0.4.0a2
 
-**Rama experimental:** consulta primero [Prueba Ogg para Windows](docs/PRUEBA-OGG-WINDOWS.md). Usa una carpeta y perfil separados de la versión estable; no sustituye aún la emisión al aire. Incluye codificador externo, botones para copiar/abrir rutas, carpeta `covers`, caché ligada al historial visible e indicadores de conexión.
+**Rama experimental:** AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). Incluye comandos para RadioCaster y una salida HLS local experimental con ID3 y portada; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
+
+Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar los ajustes de esta rama. No es necesario instalar otra copia si ya trabajas en ella. Las conexiones en vivo no se modifican automáticamente. Incluye botones para copiar/abrir rutas, carpeta `covers`, caché ligada al historial visible e indicadores de conexión.
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos; el audio continúa por Windows → FXSound → consola → USB → RadioCaster.
 

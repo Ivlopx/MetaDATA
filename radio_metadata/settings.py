@@ -338,24 +338,36 @@ class SettingsDialog(QDialog):
         ice.addRow(row)
         self.refresh_targets()
 
-        ogg = section('Codificador Ogg')
-        note(ogg, 'Prueba experimental. Conserva RadioCaster como captura y conexión. El complemento recibe audio de RadioCaster y añade los datos del archivo local de MetaDATA. Usa un mount de prueba separado; todavía falta validación nativa en Windows.')
+        ogg = section('Codificador')
+        note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. RadioCaster sigue capturando el audio y conectando al servidor. Configura cada salida en una conexión separada.')
+        encoder_format = QComboBox()
+        for label, value in [('AAC — Principal', 'aac'), ('MP3 — Respaldo', 'mp3'), ('Ogg/Opus — Experimental', 'ogg')]:
+            encoder_format.addItem(label, value)
+        encoder_format.setCurrentIndex(encoder_format.findData(config.encoder_format))
+        self.fields['encoder_format'] = encoder_format
+        ogg.addRow('Formato', encoder_format)
         text(ogg, 'ogg_ffmpeg_path', 'Archivo ffmpeg.exe')
         choose_encoder = QPushButton('Elegir FFmpeg…')
         choose_encoder.clicked.connect(self.choose_ffmpeg)
         ogg.addRow(choose_encoder)
-        probe(ogg, 'Codificador Ogg', 'Comprobar codificador')
-        note(ogg, 'En RadioCaster → Custom Encoders agrega un codificador y usa audio/ogg como MIME. Copia la línea siguiente después de elegir FFmpeg. Los parámetros entre llaves los completa RadioCaster.')
+        probe(ogg, 'Codificador', 'Comprobar codificador')
+        check(ogg, 'encoder_hls_enabled', 'Generar también HLS local con portada (AAC, experimental)')
+        self.encoder_mime = QLabel()
+        ogg.addRow('MIME para RadioCaster', self.encoder_mime)
+        note(ogg, 'En RadioCaster → Custom Encoders pega el comando y el MIME indicados. Los parámetros entre llaves los completa RadioCaster. El comando usa automáticamente la ruta abreviada de Python cuando Windows la ofrece.')
         self.ogg_command = QLineEdit()
         self.ogg_command.setReadOnly(True)
-        self.ogg_command.setAccessibleName('Comando del codificador Ogg para RadioCaster')
+        self.ogg_command.setAccessibleName('Comando del codificador para RadioCaster')
         ogg.addRow('Comando', self.ogg_command)
         copy_command = QPushButton('Copiar comando para RadioCaster')
         copy_command.clicked.connect(self.copy_ogg_command)
         ogg.addRow(copy_command)
         self.fields['ogg_ffmpeg_path'].textChanged.connect(self.refresh_ogg_command)
+        encoder_format.currentIndexChanged.connect(self.encoder_format_changed)
+        self.fields['encoder_hls_enabled'].toggled.connect(self.refresh_ogg_command)
+        self.encoder_format_changed()
         self.refresh_ogg_command()
-        note(ogg, 'La portada va dentro del flujo Ogg/Opus; no hace falta una API de imágenes para el receptor compatible. Durante pausas se envían textos vacíos y una imagen transparente para sustituir una portada retenida en caché. Otros clientes pueden comportarse de manera distinta. Esta prueba admite imágenes PNG y JPEG; WebP se limpia en vez de conservar una portada antigua.')
+        note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por RadioCaster y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; todavía no está validado en navegadores ni se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
 
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
@@ -379,30 +391,44 @@ class SettingsDialog(QDialog):
         self.navigation.setCurrentRow(self.page_names.index(page) if page in self.page_names else 0)
 
     def choose_ffmpeg(self):
-        filename, _ = QFileDialog.getOpenFileName(self, 'Selecciona FFmpeg con libopus', filter='Programas (ffmpeg.exe ffmpeg);;Todos los archivos (*)')
+        filename, _ = QFileDialog.getOpenFileName(self, 'Selecciona FFmpeg', filter='Programas (ffmpeg.exe ffmpeg);;Todos los archivos (*)')
         if filename:
             self.fields['ogg_ffmpeg_path'].setText(filename)
 
     def refresh_ogg_command(self):
         from .ogg_encoder import command_line, find_ffmpeg, EncoderError
+        from .aac_encoder import command_line as aac_command
         path = self.data_directory / ('demo-output' if self.demo else 'output') / 'nowplaying.json'
         executable = find_ffmpeg(self.fields['ogg_ffmpeg_path'].text().strip())
+        audio_format = self.fields['encoder_format'].currentData()
+        self.encoder_mime.setText({'aac': 'audio/aac', 'mp3': 'audio/mpeg', 'ogg': 'audio/ogg'}[audio_format])
+        self.encoder_command_error = ''
         try:
-            self.ogg_command.setText(command_line(path, executable) if executable else '')
+            command = (command_line(path, executable) if audio_format == 'ogg' else
+                       aac_command(path, executable, audio_format, self.fields['encoder_hls_enabled'].isChecked())) if executable else ''
+            self.ogg_command.setText(command)
             self.ogg_command.setCursorPosition(0)
             self.ogg_command.setToolTip(self.ogg_command.text())
-        except EncoderError:
+        except EncoderError as error:
             self.ogg_command.clear()
-        self.ogg_command.setPlaceholderText('Selecciona FFmpeg; la prueba se prepara desde la instalación Python.')
+            self.encoder_command_error = str(error)
+        self.ogg_command.setPlaceholderText(self.encoder_command_error or 'Selecciona FFmpeg; requiere la instalación Python.')
+
+    def encoder_format_changed(self):
+        aac = self.fields['encoder_format'].currentData() == 'aac'
+        if not aac:
+            self.fields['encoder_hls_enabled'].setChecked(False)
+        self.fields['encoder_hls_enabled'].setEnabled(aac)
+        self.refresh_ogg_command()
 
     def copy_ogg_command(self):
         from PySide6.QtWidgets import QApplication
         self.refresh_ogg_command()
         if self.ogg_command.text():
             QApplication.clipboard().setText(self.ogg_command.text())
-            self.message.setText('Comando copiado. Usa un destino Icecast de prueba y MIME audio/ogg.')
+            self.message.setText(f'Comando copiado. Usa una conexión de prueba y MIME {self.encoder_mime.text()}.')
         else:
-            self.message.setText('Selecciona FFmpeg antes de copiar el comando.')
+            self.message.setText(self.encoder_command_error or 'Selecciona FFmpeg antes de copiar el comando.')
 
     def choose_folder(self):
         folder = QFileDialog.getExistingDirectory(self, 'Carpeta de música')
@@ -446,7 +472,7 @@ class SettingsDialog(QDialog):
             elif isinstance(field, QCheckBox):
                 values[key] = field.isChecked()
             elif isinstance(field, QComboBox):
-                values[key] = field.currentData() if key in ('theme', 'priority') else field.currentText()
+                values[key] = field.currentData() if key in ('theme', 'priority', 'encoder_format') else field.currentText()
             elif isinstance(field, QSpinBox):
                 values[key] = field.value()
             else:
@@ -466,7 +492,7 @@ class SettingsDialog(QDialog):
         if self.checker and self.checker.isRunning():
             self.message.setText('Espera a que termine la prueba actual.')
             return
-        if self.demo and service != 'Codificador Ogg':
+        if self.demo and service not in ('Codificador Ogg', 'Codificador'):
             self.message.setText('La demostración no consulta servicios. Abre el modo real para probar la conexión.')
             return
         try:
