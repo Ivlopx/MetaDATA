@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>MetaDATA · Prueba AAC con portadas</title>
+<style>
+  :root { color-scheme: light dark; font: 16px system-ui; }
+  main { max-width: 520px; margin: 3rem auto; padding: 1rem; }
+  #cover { width: 144px; height: 144px; object-fit: contain; background: Canvas; }
+  audio { display: block; width: 100%; margin-top: 1rem; }
+  #status { min-height: 1.5em; }
+</style>
+<main>
+  <h1>Prueba AAC con portadas</h1>
+  <img id="cover" hidden alt="Portada de la canción">
+  <p id="title">Sin canción</p><p id="artist"></p><p id="album"></p>
+  <audio id="audio" controls></audio>
+  <p id="status" role="status">Preparando la señal de prueba…</p>
+</main>
+<script src="hls.min.js"></script>
+<script>
+'use strict';
+const audio = document.querySelector('#audio');
+const status = document.querySelector('#status');
+const cover = document.querySelector('#cover');
+const observation = { received: [], displayed: [], errors: [], ended: false, time: 0 };
+window.observation = observation;
+const decode = new TextDecoder('utf-8');
+const fields = { TIT2: 'title', TPE1: 'artist', TALB: 'album' };
+const synchsafe = (bytes, start) => bytes.slice(start, start + 4).reduce((n, b) => n * 128 + b, 0);
+function parseTag(bytes) {
+  if (bytes.length < 10 || decode.decode(bytes.slice(0, 3)) !== 'ID3' || bytes[3] !== 4) return null;
+  const limit = 10 + synchsafe(bytes, 6);
+  if (limit > bytes.length) return null;
+  const result = { title: '', artist: '', album: '', picture: null };
+  for (let pos = 10; pos + 10 <= limit;) {
+    const name = decode.decode(bytes.slice(pos, pos + 4));
+    const end = pos + 10 + synchsafe(bytes, pos + 4);
+    if (end > limit) return null;
+    const data = bytes.slice(pos + 10, end);
+    pos = end;
+    // The lab producer writes UTF-8 frames without flags or extended headers.
+    if (data[0] !== 3) continue;
+    if (fields[name]) result[fields[name]] = decode.decode(data.slice(1));
+    if (name === 'APIC') {
+      const mimeEnd = data.indexOf(0, 1);
+      const descriptionEnd = data.indexOf(0, mimeEnd + 2);
+      const type = decode.decode(data.slice(1, mimeEnd));
+      if (mimeEnd > 1 && descriptionEnd >= 0 && ['image/png', 'image/jpeg'].includes(type)) {
+        result.picture = new Blob([data.slice(descriptionEnd + 1)], { type });
+      }
+    }
+  }
+  return result;
+}
+const pending = [];
+let latestTime = -Infinity;
+let imageUrl = '';
+async function digest(blob) {
+  if (!blob) return '';
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())),
+                    byte => byte.toString(16).padStart(2, '0')).join('');
+}
+function paint() {
+  observation.time = audio.currentTime;
+  while (pending.length && pending[0].pts <= audio.currentTime + 0.04) {
+    const value = pending.shift();
+    if (value.pts <= latestTime) continue;
+    latestTime = value.pts;
+    for (const name of Object.values(fields)) {
+      document.querySelector('#' + name).textContent = value.tag[name] || (name === 'title' ? 'Sin canción' : '');
+    }
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    imageUrl = value.tag.picture ? URL.createObjectURL(value.tag.picture) : '';
+    cover.hidden = !value.tag.title || !imageUrl;
+    if (imageUrl) cover.src = imageUrl;
+    else cover.removeAttribute('src');
+    const item = { pts: value.pts, displayedAt: audio.currentTime, title: value.tag.title,
+                   artist: value.tag.artist, album: value.tag.album, imageHidden: cover.hidden };
+    observation.displayed.push(item);
+    digest(value.tag.picture).then(hash => { item.pictureSha256 = hash; });
+  }
+}
+audio.addEventListener('timeupdate', paint);
+audio.addEventListener('ended', () => { paint(); observation.ended = true; });
+audio.addEventListener('error', () => observation.errors.push(audio.error?.message || 'Audio error'));
+if (!window.Hls?.isSupported()) {
+  status.textContent = 'Esta prueba requiere hls.js y soporte del navegador para reproducción HLS mediante MSE.';
+  observation.errors.push(status.textContent);
+} else {
+  const hls = new Hls({ enableWorker: false });
+  hls.on(Hls.Events.FRAG_PARSING_METADATA, (_, { samples }) => {
+    for (const sample of samples) {
+      const tag = parseTag(sample.data);
+      if (!tag) continue;
+      pending.push({ pts: sample.pts, tag });
+      observation.received.push({ pts: sample.pts, title: tag.title, imageBytes: tag.picture?.size || 0 });
+    }
+    pending.sort((a, b) => a.pts - b.pts);
+    if (!audio.paused) paint();
+  });
+  hls.on(Hls.Events.ERROR, (_, data) => {
+    if (data.fatal) {
+      status.textContent = 'No se pudo reproducir HLS: ' + data.details;
+      observation.errors.push(data.details);
+    }
+  });
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    status.textContent = 'Listo. Pulsa reproducir para ver los cambios de portada.';
+    if (new URLSearchParams(location.search).has('autoplay')) {
+      audio.muted = true;
+      audio.play().catch(error => observation.errors.push(error.message));
+    }
+  });
+  hls.loadSource('hls/live.m3u8');
+  hls.attachMedia(audio);
+}
+</script>
+</html>

@@ -2,6 +2,8 @@
 
 Versión 0.4.0a3, 10 de noviembre de 2026. AAC es la ruta principal del proyecto; MP3 queda como respaldo. La salida Ogg sigue disponible para VLC y otros receptores compatibles.
 
+El [ensayo de AAC con portadas](INVESTIGACION-AAC-PORTADAS.md) validó una página de laboratorio con Chrome y hls.js. Esa página aún no está integrada en el reproductor local ni publicada en ORO FM.
+
 ## Qué está implementado
 
 El producto es independiente del emisor. El comando general usa frecuencia, canales y bitrate definidos en Ajustes → Codificador. Los ejemplos de RadioCaster de esta guía describen una integración específica. Para seguirlos, activa **Usar variables de RadioCaster en el comando**; el modo general no requiere esos marcadores. Las conexiones AzuraCast/Zeno.fm/Icecast se configuran en el emisor; sus escritores directos heredados ya no se ejecutan en MetaDATA.
