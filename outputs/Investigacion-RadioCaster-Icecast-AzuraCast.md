@@ -1,6 +1,6 @@
-# RadioCaster, Icecast y AzuraCast: posibilidades para MetaDATA y ORO FM
+# RadioCaster, Icecast y AzuraCast: posibilidades para MetaDATA
 
-Investigación y consultas públicas: **9 de noviembre de 2026**. Alcance: metadatos, carátulas, publicación, monitoreo y funciones de emisión relacionadas con el proyecto. Las capacidades del proveedor se distinguen de lo que MetaDATA ya implementa. No se inició sesión ni se cambió la emisión.
+Investigación técnica: **9 de noviembre de 2026**. Alcance: metadatos, carátulas, publicación, monitoreo y funciones de emisión relacionadas con el proyecto. Las capacidades del proveedor se distinguen de lo que MetaDATA ya implementa.
 
 > Informe de investigación previo a la versión 0.2. La adaptación posterior se describe en [Novedades 0.2](../docs/NOVEDADES-0.2.md). El defecto de validación KH señalado en este informe quedó corregido; los nuevos conectores y sus límites están documentados allí.
 
@@ -10,23 +10,9 @@ Podemos mantener RadioCaster para el audio y el título convencional, usar la b�
 
 Eso explica que otras estaciones sí muestren portadas: pueden obtenerlas mediante búsquedas externas, la biblioteca del AutoDJ o una integración propia. Mostrar imágenes en una web y transportarlas mediante el stream son mecanismos diferentes. [Resolución de carátulas de AzuraCast](https://github.com/AzuraCast/AzuraCast/blob/0.20.2/backend/src/Entity/ApiGenerator/SongApiGenerator.php).
 
-## 2. Qué se pudo observar en tu instalación
+## 2. Versiones examinadas
 
-| Dato | Resultado público observado |
-| --- | --- |
-| Dominio | `https://orofm.live`; la raíz redirige al inicio de sesión de AzuraCast |
-| Estación | ORO FM 88.1; ID 2; identificador `on-air` |
-| Estado en la consulta | Online; AzuraCast reportaba `live.is_live=false` |
-| Salida anunciada | MP3, 320 kbps; mount `/vocesdetepezala/orofm/stream.mp3` |
-| Título en la consulta | ORO FM 88.1 - ¡Una radio que sí brilla! |
-| Datos de canción | Álbum, género, ISRC y letra vacíos; `song.art` apuntaba a una imagen de estación |
-| Icecast identificado | `Icecast 2.4.0-kh22`, según sus estadísticas públicas |
-| Versión declarada por la documentación API | AzuraCast 0.20.2; no es una inspección del servidor instalado |
-| RadioCaster | El usuario indica la última versión. La publicación oficial consultada anuncia RadioCaster 3.7; no se inspeccionó el ejecutable de Windows |
-
-Evidencia: [Now Playing público](https://orofm.live/api/nowplaying), [OpenAPI de la instalación](https://orofm.live/api/openapi.yml), [estado público Icecast](https://orofm.live:8000/status-json.xsl), [anuncio RadioCaster 3.7](https://www.djsoft.net/enu/news/183.htm). Son consultas puntuales: el contenido y el estado pueden cambiar. No se deduce de `is_live=false` cómo están conectados tus encoders, ni de la imagen de respaldo que la búsqueda externa esté desactivada. Faltó observar una canción real para comprobarlo.
-
-Se contrastó el código etiquetado **0.20.2**, correspondiente a la versión declarada por tu API, con **0.23.9** y la revisión de desarrollo `276b9d289dc4e0caf2ab575247527a6a81062a0f`. Las limitaciones descritas no se basan solamente en versiones nuevas.
+Se comparó el código de AzuraCast 0.20.2 y 0.23.9 con la revisión de desarrollo `276b9d289dc4e0caf2ab575247527a6a81062a0f`.
 
 ## 3. RadioCaster: lo que aporta y sus límites
 
@@ -40,7 +26,7 @@ No encontré en la documentación examinada una interfaz de envío de carátula 
 
 ### Audio y operación
 
-Puede capturar entrada de sonido o reproducción de Windows y retransmitir una fuente de red; soporta varios formatos y servidores compatibles con Icecast/Shoutcast. Incluye procesamiento DSP y admite plugins VST/Winamp. Sus encoders permiten elegir formato, bitrate y datos de estación por conexión. Esto permite conservar la captura del retorno USB de tu consola. [Producto](https://www.djsoft.net/enu/radiocaster_details.htm), [fuentes de audio](https://manual.djsoft.net/radiocaster/en/sources.html), [encoders](https://manual.djsoft.net/radiocaster/en/setting-up-encoders.html).
+Puede capturar entrada de sonido o reproducción de Windows y retransmitir una fuente de red; soporta varios formatos y servidores compatibles con Icecast/Shoutcast. Incluye procesamiento DSP y admite plugins VST/Winamp. Sus encoders permiten elegir formato, bitrate y datos de estación por conexión. Esto permite conservar la captura de un retorno USB. [Producto](https://www.djsoft.net/enu/radiocaster_details.htm), [fuentes de audio](https://manual.djsoft.net/radiocaster/en/sources.html), [encoders](https://manual.djsoft.net/radiocaster/en/setting-up-encoders.html).
 
 También hay programación de inicio/parada de emisión, estadísticas que pueden consultarse desde otro servidor y encoders personalizados; la opción RTMP permite una imagen o vídeo de fondo mediante el plugin correspondiente. RTMP es otra salida de emisión: no convierte esa imagen en portada dinámica del stream Icecast. [Programador](https://manual.djsoft.net/radiocaster/en/scheduler.html), [estadísticas](https://manual.djsoft.net/radiocaster/en/statistic-relays.html), [RTMP](https://manual.djsoft.net/radiocaster/en/rtmp-streaming.html).
 
@@ -48,9 +34,9 @@ También hay programación de inicio/parada de emisión, estadísticas que puede
 
 La ruta administrativa documentada actualiza un mount activo mediante `/admin/metadata`, `mode=updinfo` y `song`. Se autentica con credenciales autorizadas para ese mount o de administración. Sirve para publicar título o mensaje de estación desde un programa externo. [Interfaz administrativa](https://www.icecast.org/docs/icecast-latest/admin_interface/).
 
-En tu salida MP3, artista y título pueden aparecer combinados en el título ICY. Los tags del archivo original no atraviesan automáticamente el recorrido de audio Windows → consola → USB: se deben obtener de la app reproductora y volver a publicar por un mecanismo de metadatos. Esta última conclusión es una inferencia técnica sobre tu recorrido de audio.
+En una salida MP3, artista y título pueden aparecer combinados en el título ICY. Los tags del archivo original no atraviesan automáticamente el recorrido de audio Windows → consola → USB: se deben obtener de la app reproductora y volver a publicar por un mecanismo de metadatos. Esta última conclusión es una inferencia técnica sobre una cadena con consola externa.
 
-**Tu servidor es Icecast-KH.** Su código MP3 contempla etiquetas `artist`, `title` y `url`, y puede emitir la URL como `StreamUrl`. Es una posibilidad real para enviar un enlace de portada a reproductores compatibles; no transporta el archivo de imagen ni garantiza que AzuraCast lo incorpore a `song.art`. La vía de actualización MP3 examinada no trata `album` como una etiqueta equivalente. Hace falta validar el comportamiento de la compilación KH22 y sus permisos antes de implementar esta salida. [Implementación KH](https://github.com/karlheyes/icecast-kh/blob/master/src/format_mp3.c).
+El código MP3 de Icecast-KH contempla etiquetas `artist`, `title` y `url`, y puede emitir la URL como `StreamUrl`. Es una posibilidad real para enviar un enlace de portada a reproductores compatibles; no transporta el archivo de imagen ni garantiza que AzuraCast lo incorpore a `song.art`. La vía de actualización MP3 examinada no trata `album` como una etiqueta equivalente. Hace falta validar el comportamiento de la compilación KH22 y sus permisos antes de implementar esta salida. [Implementación KH](https://github.com/karlheyes/icecast-kh/blob/master/src/format_mp3.c).
 
 Para aprovecharlo necesitaríamos una imagen accesible por HTTPS, publicación sincronizada de URL/título y comprobación en cada reproductor. Una ruta local `C:\...` no es una URL que pueda consultar un oyente. Además, Liquidsoap o RadioCaster podrían sobrescribir las actualizaciones: debe haber un único escritor responsable por destino.
 
@@ -84,7 +70,7 @@ Esto ofrece control sobre el resultado, pero exige alojamiento/permisos y sincro
 
 ## 6. Hallazgo importante: la API de actualización no acepta todos los campos
 
-En 0.20.2 existe la ruta autenticada `/api/station/{station_id}/nowplaying/update`, aunque no aparece en el OpenAPI público descargado de tu instalación. Las rutas del código la vinculan al permiso de Broadcasting. Se verificó su definición en código; **no se llamó en tu estación**. [Rutas de 0.20.2](https://github.com/AzuraCast/AzuraCast/blob/0.20.2/backend/config/routes/api_station.php).
+En 0.20.2 existe la ruta autenticada `/api/station/{station_id}/nowplaying/update`. Las rutas del código la vinculan al permiso de Broadcasting. [Rutas de 0.20.2](https://github.com/AzuraCast/AzuraCast/blob/0.20.2/backend/config/routes/api_station.php).
 
 El controlador permite `title`, `artist`, `duration`, `song_id`, `media_id` y determinados parámetros técnicos. **No permite `album`, `year`, `genre`, `art` ni `url`** por esa vía. Enviar esos nombres no hará que se apliquen, aunque la respuesta general indique éxito. [Filtro explícito](https://github.com/AzuraCast/AzuraCast/blob/0.20.2/backend/src/Controller/Api/Stations/UpdateMetadataAction.php).
 
@@ -116,20 +102,20 @@ Los mounts permiten distintas calidades/formats de una misma programación. Las 
 
 También se pueden administrar archivos, listas, horarios, solicitudes, servicios y webhooks según los permisos de la cuenta. Los eventos/webhooks servirían para avisos de cambios o integraciones futuras; no se configuró ninguno ni se enviaron mensajes. [API y autenticación](https://www.azuracast.com/docs/developers/apis/), [listas programadas](https://www.azuracast.com/docs/user-guide/playlists/).
 
-AzuraCast puede emitir a un servidor secundario mediante Remote Relay y sumar sus estadísticas cuando se puedan consultar. Es una alternativa a dos conexiones desde RadioCaster: debe comprobarse si el secundario admite la conexión y qué metadatos conserva. El usuario confirmó posteriormente que el destino secundario es Zeno.fm. Sigue pendiente verificar que el relay conserve los títulos y cómo se muestran las portadas allí. [Relays](https://www.azuracast.com/docs/user-guide/remote-relays/).
+AzuraCast puede emitir a un servidor secundario mediante Remote Relay y sumar sus estadísticas cuando se puedan consultar. Es una alternativa a dos conexiones desde RadioCaster: debe comprobarse si el secundario admite la conexión y qué metadatos conserva. [Relays](https://www.azuracast.com/docs/user-guide/remote-relays/).
 
-## 9. Camino recomendado para ORO FM
+## 9. Pruebas de integración sugeridas
 
 1. **Primera prueba real:** MetaDATA → archivo UTF-8 → RadioCaster → entrada correcta de AzuraCast. Verificar artista/título y sustitución por mensaje durante un anuncio. Mantener el audio de consola actual.
 2. **Portadas automáticas:** comprobar el ajuste global de búsqueda, poner canciones conocidas y revisar la imagen en la API/reproductor. Registrar coincidencias erróneas y tiempo de actualización.
 3. **Datos completos locales:** ampliar Snapshot, JSON e historial con álbum, año, duración, ISRC y procedencia de imagen cuando la fuente los entregue. No significa que el stream los reciba; es una ampliación pendiente del proyecto.
-4. **Confirmación remota:** agregar a MetaDATA lectura del Now Playing de la estación 2 y del estado Icecast, mostrando diferencias entre título esperado y recibido.
+4. **Confirmación remota:** agregar a MetaDATA lectura del Now Playing de la estación configurada y del estado Icecast, mostrando diferencias entre título esperado y recibido.
 5. **Portada exacta y logo:** decidir entre reproductor propio con JSON/imágenes o plugin AzuraCast. Investigar `StreamUrl` como salida adicional para reproductores compatibles; no usarlo como sustituto de la integración con el panel.
 6. **Después:** medir retardo por destino y evaluar relay/AutoDJ de respaldo. No activar una segunda ruta de escritura sobre el mismo mount sin definir qué proceso tiene autoridad.
 
 ## 10. Pruebas pendientes y datos necesarios
 
-Se necesita confirmar en el panel la versión real y los permisos de administrador/estación; en Windows, versión exacta de RadioCaster y conexión usada (entrada DJ Liquidsoap o Icecast directo). Las consultas públicas no revelan esos datos ni si la búsqueda remota está activada. Las claves se introducirían localmente cuando toque conectar, no en el informe ni en el chat.
+Comprueba las versiones, los permisos y el tipo de entrada de la instalación que uses para las pruebas.
 
 Las pruebas de aceptación deben cubrir: canción con portada conocida; canción sin portada; dos ediciones con mismo título; artista/título con acentos y guiones; anuncio con tags completos; mensaje de estación; pausa de ambas fuentes; cambio de prioridad; pérdida y recuperación de conexión; cierre del proceso; caché de imágenes; diferencias de retardo entre panel, reproductor y audio.
 

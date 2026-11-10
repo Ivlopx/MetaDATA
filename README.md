@@ -86,7 +86,7 @@ Además del TXT, se generan XML, JSON, imágenes y un reproductor HTML. Se conse
 
 Usa una sola ruta de publicación por destino para evitar que RadioCaster, Liquidsoap y la app sobrescriban sus títulos. Los encoders de Zeno.fm permanecen en RadioCaster.
 
-Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INTEGRACIONES.md), [Novedades 0.3](docs/NOVEDADES-0.3.md) y [Validación](docs/VALIDACION.md). La [investigación original](outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) documenta las capacidades de ORO FM, RadioCaster, Icecast y AzuraCast.
+Consulta [Conexiones](docs/CONEXIONES.md), [Integraciones documentadas](docs/INTEGRACIONES.md), [Novedades 0.3](docs/NOVEDADES-0.3.md) y [Validación](docs/VALIDACION.md). La [investigación original](outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) documenta las capacidades de RadioCaster, Icecast y AzuraCast.
 
 ## Datos y arquitectura
 

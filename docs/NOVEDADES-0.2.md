@@ -1,4 +1,4 @@
-# Adaptación 0.2 a la investigación de ORO FM
+# Novedades de MetaDATA 0.2
 
 > Documento histórico. La versión actual es [0.3](NOVEDADES-0.3.md): claves en la app, interfaz renovada y datos musicales vacíos durante pausas.
 
@@ -23,7 +23,7 @@ Los servicios nuevos comienzan desactivados. La demo no consulta ni publica a se
 
 ## Datos conservados al actualizar
 
-La configuración antigua se guarda como `config.v1.backup.json` antes de actualizar su esquema a versión 2. No se reemplazan los datos personales de tu estación por los de ORO FM. El nombre/eslogan/mensajes siguen siendo los configurados por el usuario. Las direcciones e ID públicos de ORO FM están precargados únicamente para los nuevos ajustes de conexión.
+La configuración antigua se guarda como `config.v1.backup.json` antes de actualizar su esquema a versión 2. La migración conserva el nombre, el eslogan y los mensajes configurados por el usuario. Introduce las direcciones de tu instalación para configurar las conexiones.
 
 ## Límites que siguen vigentes
 

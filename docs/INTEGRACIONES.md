@@ -2,7 +2,7 @@
 
 Consulta documental: **9 de noviembre de 2026**. «Documentado» significa respaldado por el proveedor; no significa probado contra tu estación. La versión inicial implementa lectores y salidas locales, con Icecast directo opcional.
 
-La investigación ampliada y las consultas públicas de ORO FM están en [el informe RadioCaster/Icecast/AzuraCast](../outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md). La API de `orofm.live` declara 0.20.2 y su servidor de audio se identifica como Icecast 2.4.0-kh22. Se confirmó en el código de AzuraCast 0.20.2 que la actualización en vivo admite artista/título, pero filtra álbum y URL/imagen de portada; la búsqueda remota de carátulas es un mecanismo separado. No se modificó la estación.
+El [informe de investigación](../outputs/Investigacion-RadioCaster-Icecast-AzuraCast.md) describe los límites de cada integración. El código de AzuraCast 0.20.2 permite actualizar artista y título. La búsqueda remota de carátulas se configura por separado.
 
 | Integración | Documentado / implementado | Límite pendiente |
 | --- | --- | --- |

@@ -58,14 +58,14 @@ Si RadioCaster sigue enviando sus propios metadatos al mismo mount podría sobre
 
 ## Opciones nuevas en MetaDATA 0.2
 
-### 1. Comprobación de lo que llega a ORO FM
+### 1. Comprobación de la señal del servidor
 
-En Ajustes → AzuraCast y monitoreo, activa «Comprobar título y estado». Ya se proponen:
+En Ajustes → AzuraCast y monitoreo, activa «Comprobar título y estado». Sustituye estos valores de ejemplo por los de tu instalación:
 
-- Panel: `https://orofm.live`
+- Panel: `https://azuracast.example`
 - Estación: `2`
-- Servidor Icecast: `https://orofm.live:8000`
-- Mount: `/vocesdetepezala/orofm/stream.mp3`
+- Servidor Icecast: `https://icecast.example:8000`
+- Mount: `/live.mp3`
 
 La pestaña «Lo que reciben los servidores» compara la última consulta con la selección. Una diferencia puede deberse a latencia, escritores simultáneos o una conexión mal elegida. El monitor no descarga ni sustituye la portada local: informa la URL que devuelve el servidor. Si cambia de canción, la marca de coincidencia puede variar antes de la siguiente consulta.
 
@@ -105,12 +105,12 @@ Después de verificar la publicación de imágenes, un destino directo puede inc
   {
     "name": "Icecast-KH de prueba",
     "enabled": false,
-    "url": "https://orofm.live:8000",
-    "mount": "/vocesdetepezala/orofm/stream.mp3",
+    "url": "https://icecast.example:8000",
+    "mount": "/live.mp3",
     "username": "source",
     "managed_password": true,
     "send_artwork_url": true,
-    "verify_url": "https://orofm.live:8000/status-json.xsl"
+    "verify_url": "https://icecast.example:8000/status-json.xsl"
   }
 ]
 ```

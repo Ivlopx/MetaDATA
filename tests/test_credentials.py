@@ -85,14 +85,14 @@ class CredentialsTests(unittest.TestCase):
     def test_v2_migration_preserves_settings_and_uses_native_theme(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = ConfigStore(Path(tmp))
-            old = asdict(Config(station_name='ORO FM', priority='spotify'))
+            old = asdict(Config(station_name='Estación de prueba', priority='spotify'))
             old['version'] = 2
             for field in ('theme', 'managed_credentials'):
                 old.pop(field)
             raw = json.dumps(old).encode()
             store.path.write_bytes(raw)
             config = store.load()
-            self.assertEqual(config.station_name, 'ORO FM')
+            self.assertEqual(config.station_name, 'Estación de prueba')
             self.assertEqual(config.priority, 'spotify')
             self.assertEqual(config.theme, 'system')
             self.assertEqual((Path(tmp) / 'config.v2.backup.json').read_bytes(), raw)
@@ -139,7 +139,7 @@ class CredentialsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             logo = Path(tmp) / 'logo.png'
             logo.write_bytes(b'\x89PNG\r\n\x1a\nlogo')
-            config = Config(logo_path=str(logo), station_name='ORO FM')
+            config = Config(logo_path=str(logo), station_name='Estación de prueba')
             output = LocalOutput(Path(tmp))
             for decision in (resolve([], config), resolve([Snapshot('radioboss', True, 'Campaña', 'Anuncio', r'C:\Ads\spot.mp3')], config)):
                 state = output.publish(decision, config)

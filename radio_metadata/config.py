@@ -49,15 +49,15 @@ class Config:
         "commercial", "advertisement", "promo", "jingle", "advert", "sweep", "voice"])
     # Optional direct Icecast outputs; RadioCaster's file is the recommended route.
     icecast_targets: list[dict] = field(default_factory=list)
-    azuracast_url: str = "https://orofm.live"
+    azuracast_url: str = "https://azuracast.example"
     azuracast_station: str = "2"
     remote_monitor_enabled: bool = False
     remote_poll_seconds: int = 10
-    icecast_monitor_url: str = "https://orofm.live:8000"
-    icecast_monitor_mount: str = "/vocesdetepezala/orofm/stream.mp3"
+    icecast_monitor_url: str = "https://icecast.example:8000"
+    icecast_monitor_mount: str = "/live.mp3"
     azuracast_write_enabled: bool = False
     azuracast_key_env: str = "AZURACAST_API_KEY"
-    stream_url: str = "https://orofm.live:8000/vocesdetepezala/orofm/stream.mp3"
+    stream_url: str = ""
     local_server_enabled: bool = False
     local_server_port: int = 12882
     stale_seconds: int = 30
@@ -87,7 +87,8 @@ class Config:
                 raise ValueError(f"{key}: valor permitido entre {low} y {high}")
         self._url(self.azuracast_url)
         self._url(self.icecast_monitor_url)
-        self._url(self.stream_url)
+        if self.stream_url:
+            self._url(self.stream_url)
         if not self.azuracast_station or not all(c.isalnum() or c in "_-" for c in self.azuracast_station):
             raise ValueError("Identificador de estación inválido")
         if self.azuracast_write_enabled and urlsplit(self.azuracast_url).scheme != "https":
