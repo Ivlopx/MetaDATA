@@ -265,3 +265,91 @@ class GuiTests(unittest.TestCase):
                 samples=[], incidents=[], summary=(0, None, None)))
             self.assertIn('Sin datos', panel.labels['statistics'].text())
             self.assertNotIn('0 simultáneos', panel.labels['statistics'].text())
+
+    def test_embedded_settings_single_export_widget_save_discard_and_navigation(self):
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import QCoreApplication, QEvent
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow
+        from radio_metadata.output_files import OutputFilesWidget
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            config = store.load()
+            window = MainWindow(store, config, demo=True)
+            window.show()
+            try:
+                window.worker.stop();window.worker.wait()
+                window.settings('Now Playing')
+                self.assertEqual(window.tabs.currentIndex(), 4)
+                self.assertTrue(window.settings_form.embedded)
+                self.assertEqual(len(window.findChildren(OutputFilesWidget)), 1)
+                self.assertEqual(window.settings_form.navigation.currentItem().text(), 'Now Playing')
+                form = window.settings_form
+                window.settings('Estación')
+                form.fields['station_name'].setText('Draft station')
+                form.fields['station_name'].setFocus()
+                QTest.keyClick(form.fields['station_name'], Qt.Key.Key_Return)
+                self.assertIs(window.settings_form, form)
+                self.assertEqual(window.config.station_name, config.station_name)
+                form.secrets['receiver'].edit.setText('draft-key')
+                form.secrets['receiver'].mark_changed()
+                window.tabs.setCurrentIndex(0)
+                window.settings('Publicación')
+                self.assertIs(window.settings_form, form)
+                self.assertEqual(window.settings_form.fields['station_name'].text(), 'Draft station')
+                form.reject()
+                QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+                self.assertEqual(window.settings_form.fields['station_name'].text(), config.station_name)
+                self.assertEqual(window.credentials.values, {})
+                self.assertEqual(len(window.findChildren(OutputFilesWidget)), 1)
+                form = window.settings_form
+                form.fields['station_name'].setText('Saved station')
+                form.fields['receiver_url'].setText('https://metadata.example')
+                form.secrets['receiver'].edit.setText('saved-private-key')
+                form.secrets['receiver'].mark_changed()
+                form.save()
+                QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+                self.assertEqual(window.config.station_name, 'Saved station')
+                self.assertEqual(window.settings_store.load().station_name, 'Saved station')
+                self.assertNotIn('saved-private-key', window.settings_store.path.read_text())
+                self.assertEqual(len(window.findChildren(OutputFilesWidget)), 1)
+                self.assertEqual(window.station.text(), 'Saved station')
+                self.assertFalse(window.settings_form.isWindow())
+            finally:
+                window.quit()
+
+    def test_embedded_check_allows_hiding_but_prevents_destroying_running_thread(self):
+        import threading
+        from unittest.mock import patch
+        from PySide6.QtCore import QThread
+        from PySide6.QtWidgets import QApplication
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow
+        app = QApplication.instance() or QApplication([])
+        finished = threading.Event()
+        class Check(QThread):
+            def run(self):
+                finished.wait(3)
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            window = MainWindow(store, store.load(), demo=True)
+            window.show()
+            window.worker.stop();window.worker.wait()
+            check = Check(window.settings_form)
+            check.start()
+            try:
+                with patch('radio_metadata.gui.QSystemTrayIcon.isSystemTrayAvailable', return_value=True):
+                    window.close()
+                    self.assertFalse(window.isVisible())
+                    self.assertTrue(check.isRunning())
+                window.show()
+                window.quit()
+                self.assertFalse(window.exiting)
+                self.assertEqual(window.tabs.currentIndex(), 4)
+                self.assertIn('termine', window.settings_form.message.text())
+            finally:
+                finished.set();check.wait()
+                window.quit()

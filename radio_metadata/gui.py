@@ -5,12 +5,12 @@ import queue
 import threading
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl
-from PySide6.QtGui import QCloseEvent, QPixmap, QDesktopServices
+from PySide6.QtGui import QCloseEvent, QPixmap, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QLabel,
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton,
     QStyle, QSystemTrayIcon, QTableWidget, QTableWidgetItem,
-    QTabWidget, QVBoxLayout, QWidget, QScrollArea,
+    QTabWidget, QVBoxLayout, QWidget, QScrollArea, QGroupBox,
 )
 
 from .output_files import OutputFilesWidget
@@ -128,6 +128,11 @@ class MainWindow(QMainWindow):
         layout.addLayout(heading)
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
+        for index in range(5):
+            shortcut = QShortcut(QKeySequence(f'Ctrl+{index + 1}'), self)
+            shortcut.activated.connect(lambda selected=index: self.tabs.setCurrentIndex(selected))
+        preferences = QShortcut(QKeySequence('Ctrl+,'), self)
+        preferences.activated.connect(lambda: self.settings())
 
         def page(name):
             widget = QWidget()
@@ -140,6 +145,11 @@ class MainWindow(QMainWindow):
         home = page('Inicio')
         if demo:
             home.addWidget(QLabel('Demostración · datos de ejemplo, sin conexiones externas'))
+        playback = QGroupBox('Reproducción')
+        playback_layout = QVBoxLayout(playback)
+        playback_layout.setContentsMargins(16, 20, 16, 16)
+        playback_layout.setSpacing(16)
+        home.addWidget(playback)
         row = QHBoxLayout()
         row.setSpacing(20)
         self.cover = QLabel('Sin carátula')
@@ -157,11 +167,12 @@ class MainWindow(QMainWindow):
         self.artist, self.album = QLabel(''), QLabel('')
         self.active, self.reason = QLabel('Fuente: estación'), QLabel('')
         self.reason.setWordWrap(True)
+        self.reason.setToolTip('La selección se basa en reproducción y prioridad. Comprueba qué audio está al aire en tu consola.')
         for widget in (self.title, self.artist, self.album, self.active, self.reason):
             widget.setTextFormat(Qt.TextFormat.PlainText)
             text.addWidget(widget)
         row.addLayout(text, 1)
-        home.addLayout(row)
+        playback_layout.addLayout(row)
         controls = QHBoxLayout()
         controls.addWidget(QLabel('Fuente'))
         self.mode = QComboBox()
@@ -173,11 +184,11 @@ class MainWindow(QMainWindow):
         self.station_button = QPushButton('Pausar metadatos')
         self.station_button.clicked.connect(self.toggle_station)
         controls.addWidget(self.station_button)
-        preview = QPushButton('Ver carátulas')
+        preview = QPushButton('Abrir reproductor')
         preview.clicked.connect(self.open_preview)
         controls.addWidget(preview)
         controls.addStretch()
-        home.addLayout(controls)
+        playback_layout.addLayout(controls)
         self.monitor_summary = QLabel('')
         self.monitor_summary.setWordWrap(True)
         self.monitor_summary.setTextFormat(Qt.TextFormat.PlainText)
@@ -188,14 +199,21 @@ class MainWindow(QMainWindow):
             for label, value in [('RadioBOSS', 'radioboss'), ('Spotify', 'spotify'), ('Ambas reproducen', 'both'), ('Anuncio', 'ad'), ('Silencio', 'silence')]:
                 self.scenarios.addItem(label, value)
             self.scenarios.currentIndexChanged.connect(lambda: self.worker.command('scenario', self.scenarios.currentData()))
-            home.addWidget(self.scenarios)
+            scenario_row = QHBoxLayout()
+            scenario_row.addWidget(QLabel('Escenario de prueba'))
+            scenario_row.addWidget(self.scenarios)
+            scenario_row.addStretch()
+            home.addLayout(scenario_row)
         home.addSpacing(8)
         home.addWidget(QLabel('Últimas canciones'))
         self.recent = QTableWidget(0, 3)
         self.recent.setHorizontalHeaderLabels(['Hora', 'Artista', 'Título'])
         self.setup_table(self.recent)
         self.recent.setMaximumHeight(145)
+        self.recent.hide()
         home.addWidget(self.recent)
+        self.recent_empty = QLabel('Las canciones válidas aparecerán aquí.')
+        home.addWidget(self.recent_empty)
         home.addStretch()
 
         history_page = page('Historial')
@@ -213,6 +231,7 @@ class MainWindow(QMainWindow):
         connections = page('Conexiones')
         connections.addWidget(QLabel('Fuentes de metadatos y archivos para tu emisor'))
         sources_button = QPushButton('Administrar fuentes y prioridades…')
+        sources_button.setMaximumWidth(260)
         sources_button.clicked.connect(lambda: self.settings('Fuentes'))
         connections.addWidget(sources_button)
         source_scroll = QScrollArea()
@@ -225,6 +244,7 @@ class MainWindow(QMainWindow):
         connections.addWidget(source_scroll, 1)
         self.refresh_source_connections()
         details = QPushButton('Mostrar detalles')
+        details.setMaximumWidth(160)
         details.setCheckable(True)
         connections.addWidget(details)
         self.diagnostics = QPlainTextEdit()
@@ -241,30 +261,9 @@ class MainWindow(QMainWindow):
         self.monitor_panel.check_button.clicked.connect(lambda: self.worker.command('probe', None))
         self.monitor_panel.settings_button.clicked.connect(lambda: self.settings('Monitoreo'))
 
-        settings_page = page('Ajustes')
-        for name, description in [('Estación', 'Identidad, logo y apariencia'), ('Fuentes', 'Reproductores, permisos y prioridades'), ('Reglas', 'Listas blanca y negra, subcarpetas y exclusiones'),
-                                  ('Publicación', 'Enviar datos y carátulas al receptor autohospedado'),
-                                  ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Now Playing', 'TXT, XML y JSON para tu aplicación de transmisión'), ('Codificador', 'AAC principal, MP3 de respaldo y prueba HLS con portada'),
-                                  ('Monitoreo', 'Audio, silencio, incidentes y estadísticas de oyentes'),
-                                  ('Avanzados', 'Intervalos y reproductor local')]:
-            row = QHBoxLayout()
-            label = QLabel(description)
-            label.setWordWrap(True)
-            row.addWidget(label, 1)
-            button = QPushButton(name + '…')
-            button.clicked.connect(lambda checked=False, p=name: self.settings(p))
-            row.addWidget(button)
-            settings_page.addLayout(row)
-        self.guide = QPlainTextEdit()
-        self.guide.setReadOnly(True)
-        self.guide.setPlainText('Las claves se introducen desde Conexiones y se guardan en tu usuario de Windows.\n\n'
-            'MetaDATA obtiene los datos de las fuentes de reproducción y genera salidas para tu emisor. '
-            'El audio y las conexiones con tus servidores se configuran en la aplicación de transmisión que elijas.\n\n'
-            'Los anuncios, promos y jingles excluidos vacían los datos publicados y no entran al historial musical. '
-            'La selección no identifica de forma infalible el audio de la consola.')
-        settings_page.addWidget(self.guide, 1)
-        self.output_files = OutputFilesWidget(store.directory / ('demo-output' if demo else 'output'))
-        layout.addWidget(self.output_files)
+        self.settings_page = page('Ajustes')
+        self.settings_page.setContentsMargins(0, 0, 0, 0)
+        self.settings_form = None
         self.output_label = QLabel('')
         self.output_label.setTextFormat(Qt.TextFormat.PlainText)
         self.output_label.setWordWrap(True)
@@ -285,6 +284,7 @@ class MainWindow(QMainWindow):
         self.mode.currentIndexChanged.connect(lambda: self.station_button.setText('Reanudar automático' if self.mode.currentData() == 'station' else 'Pausar metadatos'))
         self.worker.updated.connect(self.update_state)
         self.worker.failed.connect(self.report_failure)
+        self.rebuild_settings()
         self.worker.start()
 
     @staticmethod
@@ -310,35 +310,41 @@ class MainWindow(QMainWindow):
         while self.connection_rows.count():
             self.connection_rows.takeAt(0).widget().deleteLater()
         self.connection_labels, self.connection_dots = {}, {}
-        rows = configured_sources(self.config) + [dict(id='Now Playing', name='Now Playing')]
-        rows.append(dict(id='Receptor', name='Receptor'))
-        for source in rows:
-            key = source['name'] if source['id'] in ('radioboss', 'spotify') else source['id']
-            destination = ('RadioBOSS' if source['id'] == 'radioboss' else
-                           'Now Playing' if key == 'Now Playing' else
-                           'Publicación' if key == 'Receptor' else 'Fuentes')
-            widget = QWidget()
-            row = QHBoxLayout(widget)
-            row.setContentsMargins(0, 0, 0, 0)
-            icon = QLabel()
-            icon.setPixmap(brand_icon(source['name']).pixmap(24, 24))
-            row.addWidget(icon)
-            label = QLabel(source['name'])
-            label.setTextFormat(Qt.TextFormat.PlainText)
-            row.addWidget(label)
-            dot = QLabel()
-            dot.setPixmap(status_pixmap('unknown'))
-            dot.setProperty('state', 'unknown')
-            row.addWidget(dot)
-            status = QLabel('Esperando comprobación')
-            status.setTextFormat(Qt.TextFormat.PlainText)
-            status.setWordWrap(True)
-            row.addWidget(status, 1)
-            button = QPushButton('Configurar…')
-            button.clicked.connect(lambda checked=False, page=destination: self.settings(page))
-            row.addWidget(button)
-            self.connection_rows.addWidget(widget)
-            self.connection_labels[key], self.connection_dots[key] = status, dot
+        for title, rows in (
+            ('Fuentes de reproducción', configured_sources(self.config)),
+            ('Salidas de metadatos', [dict(id='Now Playing', name='Now Playing'), dict(id='Receptor', name='Receptor')])):
+            group = QGroupBox(title)
+            group_layout = QVBoxLayout(group)
+            group_layout.setContentsMargins(16, 16, 16, 8)
+            self.connection_rows.addWidget(group)
+            for source in rows:
+                key = source['name'] if source['id'] in ('radioboss', 'spotify') else source['id']
+                destination = ('RadioBOSS' if source['id'] == 'radioboss' else
+                               'Now Playing' if key == 'Now Playing' else
+                               'Publicación' if key == 'Receptor' else 'Fuentes')
+                widget = QWidget()
+                row = QHBoxLayout(widget)
+                row.setContentsMargins(0, 8, 0, 8)
+                icon = QLabel()
+                icon.setPixmap(brand_icon(source['name']).pixmap(24, 24))
+                row.addWidget(icon)
+                label = QLabel(source['name'])
+                label.setTextFormat(Qt.TextFormat.PlainText)
+                label.setMinimumWidth(110)
+                row.addWidget(label)
+                dot = QLabel()
+                dot.setPixmap(status_pixmap('unknown'))
+                dot.setProperty('state', 'unknown')
+                row.addWidget(dot)
+                status = QLabel('Esperando comprobación')
+                status.setTextFormat(Qt.TextFormat.PlainText)
+                status.setWordWrap(True)
+                row.addWidget(status, 1)
+                button = QPushButton('Configurar…')
+                button.clicked.connect(lambda checked=False, page=destination: self.settings(page))
+                row.addWidget(button)
+                group_layout.addWidget(widget)
+                self.connection_labels[key], self.connection_dots[key] = status, dot
 
     def refresh_source_modes(self):
         current = self.mode.currentData()
@@ -389,7 +395,8 @@ class MainWindow(QMainWindow):
         else:
             self.album.clear()
         self.active.setText("Fuente seleccionada: " + source_name(decision.source, self.config))
-        self.reason.setText(("⚠ Varias fuentes reproducen. " if decision.conflict else "") + decision.reason)
+        reason = decision.reason.replace("; comprobar consola", "")
+        self.reason.setText(("⚠ Varias fuentes reproducen. " if decision.conflict else "") + reason)
         art = decision.song.artwork if decision.song else b""
         pixmap = QPixmap()
         if art:
@@ -414,6 +421,8 @@ class MainWindow(QMainWindow):
             problems = [row['message'] for row in extra[0].get('records', []) if row['state'] != 'ok']
             self.monitor_summary.setText('Monitoreo: ' + ' · '.join(problems) if problems else '')
         self.recent.setRowCount(min(3, len(rows)))
+        self.recent_empty.setVisible(not rows)
+        self.recent.setVisible(bool(rows))
         for i, row in enumerate(rows[:3]):
             for j, value in enumerate((self.display_time(row[0], short=True), row[2], row[3])):
                 self.recent.setItem(i, j, QTableWidgetItem(str(value or '')))
@@ -448,15 +457,41 @@ class MainWindow(QMainWindow):
             self.connection_labels[name].setText('Administrador detenido · estado sin actualizar')
 
     def settings(self, page='Estación'):
-        dialog = SettingsDialog(self.config, self, store=self.settings_store, credentials=self.credentials, page=page, demo=self.demo)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.config = dialog.result_config
-            apply_appearance(QApplication.instance(), self.config.theme)
-            self.worker.command('config', self.config)
-            self.refresh_source_modes()
-            self.refresh_source_connections()
-            self.station.setText(self.config.station_name)
-            self.statusBar().showMessage('Ajustes guardados', 5000)
+        self.tabs.setCurrentIndex(4)
+        page = {'Música': 'Reglas', 'Spotify': 'Fuentes'}.get(page, page)
+        if page in self.settings_form.page_names:
+            self.settings_form.navigation.setCurrentRow(self.settings_form.page_names.index(page))
+
+    def rebuild_settings(self):
+        page, kind = 'Estación', 'nowplaying.xml'
+        if self.settings_form is not None:
+            old = self.settings_form
+            page = old.page_names[old.navigation.currentRow()]
+            kind = self.output_files.kind.currentData()
+            self.settings_page.removeWidget(old)
+            old.hide()
+            old.deleteLater()
+        self.settings_form = SettingsDialog(self.config, self, store=self.settings_store,
+                                            credentials=self.credentials, page=page, demo=self.demo, embedded=True)
+        self.settings_form.accepted.connect(self.apply_settings)
+        self.settings_form.rejected.connect(self.discard_settings)
+        self.settings_page.addWidget(self.settings_form)
+        self.output_files = self.settings_form.findChildren(OutputFilesWidget)[0]
+        self.output_files.kind.setCurrentIndex(self.output_files.kind.findData(kind))
+
+    def apply_settings(self):
+        self.config = self.settings_form.result_config
+        apply_appearance(QApplication.instance(), self.config.theme)
+        self.worker.command('config', self.config)
+        self.refresh_source_modes()
+        self.refresh_source_connections()
+        self.station.setText(self.config.station_name)
+        self.rebuild_settings()
+        self.statusBar().showMessage('Cambios guardados', 5000)
+
+    def discard_settings(self):
+        self.rebuild_settings()
+        self.statusBar().showMessage('Cambios descartados', 5000)
 
     def open_preview(self):
         if not self.config.local_server_enabled:
@@ -476,6 +511,12 @@ class MainWindow(QMainWindow):
             self.showMinimized()
 
     def closeEvent(self, event: QCloseEvent):
+        if ((self.exiting or not QSystemTrayIcon.isSystemTrayAvailable()) and self.settings_form
+                and any(thread.isRunning() for thread in self.settings_form.findChildren(QThread))):
+            self.settings_form.message.setText('Espera a que termine la comprobación antes de salir.')
+            self.tabs.setCurrentIndex(4)
+            event.ignore()
+            return
         if not self.exiting and QSystemTrayIcon.isSystemTrayAvailable():
             self.hide()
             event.ignore()
@@ -487,8 +528,10 @@ class MainWindow(QMainWindow):
 
     def quit(self):
         self.exiting = True
-        self.close()
-        QApplication.quit()
+        if self.close():
+            QApplication.quit()
+        else:
+            self.exiting = False
 
 
 STYLE = ''  # Compatibility for integrations; use the operating system palette.

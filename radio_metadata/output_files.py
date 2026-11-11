@@ -40,7 +40,7 @@ class OutputFilesWidget(QWidget):
         self.path.setText(str(self.directory / self.kind.currentData()))
         self.path.setCursorPosition(0)
         self.hint.setText({'nowplaying.xml': 'XML: atributo TRACK/CASTTITLE para el título combinado; artista, título y álbum separados. La plantilla depende del emisor.',
-                           'nowplaying.txt': 'Artista - Título en UTF-8; línea vacía durante pausas.',
+                           'nowplaying.txt': 'Título combinado con tu formato, en UTF-8; línea vacía durante pausas.',
                            'nowplaying.json': 'Datos completos; imágenes separadas en la carpeta covers.'}[self.kind.currentData()])
 
     def open_folder(self):

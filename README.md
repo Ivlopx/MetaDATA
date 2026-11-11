@@ -1,4 +1,4 @@
-# MetaDATA · copia de prueba 0.5.0a2
+# MetaDATA · copia de prueba 0.5.0a3
 
 **Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
@@ -6,9 +6,9 @@ Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar l
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos de forma independiente del programa de transmisión. El emisor que elijas captura y envía el audio; MetaDATA prepara archivos y, opcionalmente, audio codificado para integraciones compatibles.
 
-La interfaz utiliza controles de escritorio, colores del sistema y cinco pantallas: **Inicio, Historial, Conexiones, Monitoreo y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Funciona en segundo plano con bandeja, ocultar y restaurar.
+La interfaz utiliza controles de escritorio, colores del sistema y cinco pantallas: **Inicio, Historial, Conexiones, Monitoreo y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Ajustes contiene el formulario directamente; los accesos desde Conexiones llevan a esa misma pantalla. Las rutas se administran en Now Playing. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
-Novedades de esta versión: [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md). También incluye [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
+Novedades de esta versión: [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md). Conserva [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md) y [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
 
 ## Instalar y actualizar en Windows
 

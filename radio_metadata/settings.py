@@ -3,6 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox, QPlainTextEdit,
     QPushButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
@@ -83,8 +84,11 @@ class ConnectionCheck(QThread):
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, config, parent=None, *, store=None, credentials=None, page='Estación', demo=False):
+    def __init__(self, config, parent=None, *, store=None, credentials=None, page='Estación', demo=False, embedded=False):
         super().__init__(parent)
+        self.embedded = embedded
+        if embedded:
+            self.setWindowFlags(Qt.WindowType.Widget)
         self.setWindowTitle('Ajustes de MetaDATA')
         self.resize(840, 650)
         self.original, self.store, self.demo = config, store, demo
@@ -98,6 +102,7 @@ class SettingsDialog(QDialog):
         self.navigation = QListWidget()
         self.navigation.setFixedWidth(150)
         self.navigation.setSpacing(3)
+        self.navigation.setAccessibleName('Secciones de ajustes')
         body.addWidget(self.navigation)
         self.pages = QStackedWidget()
         body.addWidget(self.pages, 1)
@@ -117,6 +122,12 @@ class SettingsDialog(QDialog):
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QScrollArea.Shape.NoFrame)
             scroll.setWidget(widget)
+            heading = QLabel(name)
+            heading_font = heading.font()
+            heading_font.setPointSize(heading_font.pointSize() + 3)
+            heading_font.setBold(True)
+            heading.setFont(heading_font)
+            form.addRow(heading)
             self.pages.addWidget(scroll)
             return form
 
@@ -131,6 +142,7 @@ class SettingsDialog(QDialog):
             field.setChecked(getattr(config, key))
             self.fields[key] = field
             form.addRow(field)
+            return field
 
         def number(form, key, label, low, high):
             field = QSpinBox()
@@ -143,6 +155,7 @@ class SettingsDialog(QDialog):
             label = QLabel(value)
             label.setTextFormat(Qt.TextFormat.PlainText)
             label.setWordWrap(True)
+            label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             form.addRow(label)
 
         def secret(form, service, label):
@@ -162,6 +175,7 @@ class SettingsDialog(QDialog):
             text(general, key, label)
         text(general, 'logo_path', 'Logo (archivo de imagen)')
         choose = QPushButton('Elegir logo…')
+        choose.setMaximumWidth(180)
         choose.clicked.connect(self.choose_logo)
         general.addRow(choose)
         theme = QComboBox()
@@ -173,6 +187,7 @@ class SettingsDialog(QDialog):
         note(general, 'Sin música se envían artista y título vacíos. Los mensajes y el logo se muestran solo en MetaDATA y su reproductor; no se publican como una canción.')
 
         messages_button = QPushButton('Personalizar mensajes visuales')
+        messages_button.setMaximumWidth(250)
         messages_button.setCheckable(True)
         general.addRow(messages_button)
         messages = QWidget()
@@ -182,6 +197,17 @@ class SettingsDialog(QDialog):
         messages.setVisible(False)
         messages_button.toggled.connect(messages.setVisible)
         general.addRow(messages)
+
+        sources = section('Fuentes')
+        self.source_settings = SourceSettings(config, demo=demo)
+        sources.addRow(self.source_settings)
+
+        rb = section('RadioBOSS')
+        text(rb, 'radioboss_url', 'Dirección de la API')
+        text(rb, 'radioboss_user', 'Usuario (opcional)')
+        secret(rb, 'radioboss', 'Contraseña')
+        probe(rb, 'RadioBOSS')
+        note(rb, 'Activa el control remoto por HTTP en RadioBOSS. La consulta y prioridad se activan en Fuentes. La prueba consulta el estado; no controla su reproducción.')
 
         rules = section('Reglas')
         number(rules, 'history_visible_limit', 'Canciones visibles en historial', 10, 1000)
@@ -198,17 +224,6 @@ class SettingsDialog(QDialog):
             field.setMaximumHeight(80)
             self.fields[key] = field
             rules.addRow(label + '\nUna por línea', field)
-
-        sources = section('Fuentes')
-        self.source_settings = SourceSettings(config, demo=demo)
-        sources.addRow(self.source_settings)
-
-        rb = section('RadioBOSS')
-        text(rb, 'radioboss_url', 'Dirección de la API')
-        text(rb, 'radioboss_user', 'Usuario (opcional)')
-        secret(rb, 'radioboss', 'Contraseña')
-        probe(rb, 'RadioBOSS')
-        note(rb, 'Activa el control remoto por HTTP en RadioBOSS. La consulta y prioridad se activan en Fuentes. La prueba consulta el estado; no controla su reproducción.')
 
         caster = section('Now Playing')
         self.title_presets = QComboBox()
@@ -249,10 +264,20 @@ class SettingsDialog(QDialog):
         caster.addRow('Ejemplo', preview)
         choose_title_preset()
         preview_format()
-        note(caster, 'RadioCaster puede seguir leyendo {TRACK[CASTTITLE]}; cambia aquí el contenido sin volver a modificar su plantilla. Este ajuste afecta al texto combinado de TXT, XML y JSON. Los campos separados y las etiquetas musicales conservan artista y título correctos; cada reproductor decide cómo mostrarlos.')
-        note(caster, 'Elige el formato que acepte tu aplicación de transmisión: TXT para un título combinado, XML para atributos separados o JSON para integraciones. Copia la ruta o abre la carpeta y selecciona el archivo en tu emisor.')
+        note(caster, 'El formato cambia el texto combinado. Artista, título y álbum conservan sus campos separados.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
-        note(caster, 'Las conexiones y contraseñas de transmisión se configuran en el emisor que elijas. Cada programa interpreta los formatos de manera distinta; no se presupone compatibilidad con todos. Los archivos de texto no transportan imágenes por sí solos. Ejemplo RadioCaster: Read from XML file, Title Format {TRACK[CASTTITLE]}.')
+        help_button = QPushButton('Cómo conectarlo a mi emisor')
+        help_button.setMaximumWidth(240)
+        help_button.setCheckable(True)
+        caster.addRow(help_button)
+        help_widget = QWidget()
+        help_form = QFormLayout(help_widget)
+        help_form.setContentsMargins(0, 4, 0, 4)
+        note(help_form, 'Selecciona en tu emisor el archivo y formato que admita. TXT entrega el título combinado; XML y JSON requieren un lector compatible. Las conexiones de audio se configuran en el emisor.')
+        note(help_form, 'RadioCaster: Read from XML file, con Title Format {TRACK[CASTTITLE]}. Puedes mantener esa plantilla y cambiar el contenido desde la lista de MetaDATA. El XML no transporta imágenes por sí solo.')
+        help_widget.hide()
+        help_button.toggled.connect(help_widget.setVisible)
+        caster.addRow(help_widget)
         probe(caster, 'Now Playing', 'Comprobar archivos')
 
         publish = section('Publicación')
@@ -266,12 +291,18 @@ class SettingsDialog(QDialog):
         art = section('Carátulas')
         text(art, 'stream_url', 'Enlace de audio')
         check(art, 'local_server_enabled', 'Habilitar reproductor local con carátulas')
-        check(art, 'webdav_enabled', 'Publicar imágenes y JSON en alojamiento WebDAV')
+        webdav_toggle = check(art, 'webdav_enabled', 'Usar un alojamiento WebDAV existente (avanzado)')
+        webdav_widget = QWidget()
+        webdav_form = QFormLayout(webdav_widget)
+        webdav_form.setContentsMargins(0, 8, 0, 8)
         for key, label in [('webdav_upload_url', 'Carpeta HTTPS de subida'), ('webdav_public_url', 'Carpeta HTTPS pública'), ('webdav_username', 'Usuario')]:
-            text(art, key, label)
-        secret(art, 'webdav', 'Contraseña')
-        probe(art, 'Alojamiento de carátulas')
-        note(art, 'El alojamiento debe existir y permitir WebDAV y lectura pública. Esta salida sirve al reproductor propio; no modifica las portadas de AzuraCast. En pausas y anuncios el logo se muestra solo como identidad visual, con los campos de canción vacíos.')
+            text(webdav_form, key, label)
+        secret(webdav_form, 'webdav', 'Contraseña')
+        probe(webdav_form, 'Alojamiento de carátulas')
+        note(webdav_form, 'El alojamiento debe permitir WebDAV y lectura pública. Es una alternativa al receptor autohospedado de Publicación. No modifica las carátulas del servidor de audio ni publica canciones durante las pausas.')
+        webdav_widget.setVisible(config.webdav_enabled)
+        webdav_toggle.toggled.connect(webdav_widget.setVisible)
+        art.addRow(webdav_widget)
 
         ogg = section('Codificador')
         note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. Para un emisor que admita codificador externo por consola: recibe audio PCM de 16 bits por entrada estándar y devuelve audio codificado por salida estándar. Comprueba ese contrato en tu programa; este módulo no captura audio ni conecta al servidor.')
@@ -292,6 +323,7 @@ class SettingsDialog(QDialog):
         check(ogg, 'encoder_radiocaster_variables', 'Usar variables de RadioCaster en el comando')
         text(ogg, 'ogg_ffmpeg_path', 'Archivo ffmpeg.exe')
         choose_encoder = QPushButton('Elegir FFmpeg…')
+        choose_encoder.setMaximumWidth(180)
         choose_encoder.clicked.connect(self.choose_ffmpeg)
         ogg.addRow(choose_encoder)
         probe(ogg, 'Codificador', 'Comprobar codificador')
@@ -304,6 +336,7 @@ class SettingsDialog(QDialog):
         self.ogg_command.setAccessibleName('Comando del codificador externo')
         ogg.addRow('Comando', self.ogg_command)
         copy_command = QPushButton('Copiar comando')
+        copy_command.setMaximumWidth(180)
         copy_command.clicked.connect(self.copy_ogg_command)
         ogg.addRow(copy_command)
         self.fields['ogg_ffmpeg_path'].textChanged.connect(self.refresh_ogg_command)
@@ -352,11 +385,21 @@ class SettingsDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText('Guardar')
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('Cancelar')
+        if embedded:
+            buttons.button(QDialogButtonBox.StandardButton.Save).setText('Guardar cambios')
+            buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('Descartar cambios')
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         page = {'Música': 'Reglas', 'Spotify': 'Fuentes'}.get(page, page)
         self.navigation.setCurrentRow(self.page_names.index(page) if page in self.page_names else 0)
+        if embedded:
+            for button in self.findChildren(QPushButton):
+                button.setAutoDefault(False)
+                button.setDefault(False)
+            save_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Save), self)
+            save_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            save_shortcut.activated.connect(self.save)
 
     def choose_ffmpeg(self):
         filename, _ = QFileDialog.getOpenFileName(self, 'Selecciona FFmpeg', filter='Programas (ffmpeg.exe ffmpeg);;Todos los archivos (*)')
@@ -458,9 +501,24 @@ class SettingsDialog(QDialog):
         self.checker.finished.connect(lambda: button.setEnabled(True))
         self.checker.start()
 
+    def keyPressEvent(self, event):
+        if self.embedded and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focused = self.focusWidget()
+            if isinstance(focused, QPushButton):
+                focused.click()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def done(self, result):
         if any(thread.isRunning() for thread in self.findChildren(QThread)):
             self.message.setText('Espera a que termine la prueba antes de cerrar los ajustes.')
+            return
+        if self.embedded:
+            if result == QDialog.DialogCode.Accepted:
+                self.accepted.emit()
+            else:
+                self.rejected.emit()
             return
         super().done(result)
 
