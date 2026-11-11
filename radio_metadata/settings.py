@@ -16,6 +16,9 @@ from .connection_tests import OverlayCredentials, check_connection
 
 
 def credential_key(service, config):
+    if service == 'statistics':
+        from .monitoring import stats_key
+        return stats_key(config)
     if service == 'receiver':
         from .publication import publication_key
         return publication_key(config)
@@ -208,6 +211,45 @@ class SettingsDialog(QDialog):
         note(rb, 'Activa el control remoto por HTTP en RadioBOSS. La consulta y prioridad se activan en Fuentes. La prueba consulta el estado; no controla su reproducción.')
 
         caster = section('Now Playing')
+        self.title_presets = QComboBox()
+        presets = [('Canción - Artista', '{title} - {artist}'), ('Artista - Canción', '{artist} - {title}'),
+                   ('Solo canción', '{title}'), ('Canción - Artista (Álbum)', '{title} - {artist} ({album})'),
+                   ('Personalizado…', None)]
+        for label, value in presets:
+            self.title_presets.addItem(label, value)
+        index = self.title_presets.findData(config.title_format)
+        self.title_presets.setCurrentIndex(index if index >= 0 else len(presets) - 1)
+        caster.addRow('Formato del título combinado', self.title_presets)
+        title_format = QLineEdit(config.title_format)
+        self.fields['title_format'] = title_format
+        custom_row = QWidget()
+        custom_layout = QVBoxLayout(custom_row)
+        custom_layout.setContentsMargins(0, 0, 0, 0)
+        custom_layout.addWidget(title_format)
+        custom_help = QLabel('Campos: {title}, {artist}, {album}, {album_artist}, {year}, {genre}.')
+        custom_help.setWordWrap(True)
+        custom_layout.addWidget(custom_help)
+        caster.addRow(custom_row)
+        preview = QLabel()
+        preview.setTextFormat(Qt.TextFormat.PlainText)
+        def preview_format():
+            from .title_format import format_title
+            from .model import Snapshot
+            try:
+                preview.setText(format_title(Snapshot('preview', artist='Artista', title='Canción', album='Álbum', year='2026'), title_format.text()))
+            except ValueError as error:
+                preview.setText(str(error))
+        def choose_title_preset():
+            value = self.title_presets.currentData()
+            custom_row.setVisible(value is None)
+            if value is not None:
+                title_format.setText(value)
+        self.title_presets.currentIndexChanged.connect(choose_title_preset)
+        title_format.textChanged.connect(preview_format)
+        caster.addRow('Ejemplo', preview)
+        choose_title_preset()
+        preview_format()
+        note(caster, 'RadioCaster puede seguir leyendo {TRACK[CASTTITLE]}; cambia aquí el contenido sin volver a modificar su plantilla. Este ajuste afecta al texto combinado de TXT, XML y JSON. Los campos separados y las etiquetas musicales conservan artista y título correctos; cada reproductor decide cómo mostrarlos.')
         note(caster, 'Elige el formato que acepte tu aplicación de transmisión: TXT para un título combinado, XML para atributos separados o JSON para integraciones. Copia la ruta o abre la carpeta y selecciona el archivo en tu emisor.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
         note(caster, 'Las conexiones y contraseñas de transmisión se configuran en el emisor que elijas. Cada programa interpreta los formatos de manera distinta; no se presupone compatibilidad con todos. Los archivos de texto no transportan imágenes por sí solos. Ejemplo RadioCaster: Read from XML file, Title Format {TRACK[CASTTITLE]}.')
@@ -274,6 +316,28 @@ class SettingsDialog(QDialog):
         self.encoder_format_changed()
         self.refresh_ogg_command()
         note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; hay una prueba de laboratorio con Chrome y hls.js, pendiente de validar con tu emisor en Windows. No se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
+
+        monitoring = section('Monitoreo')
+        check(monitoring, 'audio_monitor_enabled', 'Comprobar la recepción y el silencio del audio')
+        note(monitoring, 'Usa el enlace de audio de Carátulas y el FFmpeg seleccionado en Codificador. Toma muestras periódicas desde esta computadora, sin reproducir sonido por los altavoces. No representa un monitoreo continuo ni desde varios países. Cada comprobación abre una conexión de oyente y consume datos.')
+        number(monitoring, 'monitor_interval_seconds', 'Comprobar cada (segundos)', 15, 300)
+        number(monitoring, 'monitor_sample_seconds', 'Duración de muestra (segundos)', 3, 10)
+        number(monitoring, 'monitor_silence_seconds', 'Silencio mínimo en la muestra (segundos)', 1, 10)
+        number(monitoring, 'monitor_threshold_db', 'Umbral de silencio (dBFS)', -90, -10)
+        number(monitoring, 'monitor_confirmations', 'Resultados consecutivos para abrir/cerrar incidentes', 1, 5)
+        number(monitoring, 'monitor_retention_days', 'Conservar datos de monitoreo (días)', 1, 365)
+        check(monitoring, 'statistics_enabled', 'Consultar oyentes al servidor de audio (solo lectura)')
+        text(monitoring, 'statistics_url', 'URL completa de estadísticas JSON')
+        stats_format = QComboBox()
+        for label, value in [('JSON genérico', 'generic'), ('Icecast status-json', 'icecast'), ('AzuraCast Now Playing', 'azuracast')]:
+            stats_format.addItem(label, value)
+        stats_format.setCurrentIndex(stats_format.findData(config.statistics_format))
+        self.fields['statistics_format'] = stats_format
+        monitoring.addRow('Formato de la respuesta', stats_format)
+        text(monitoring, 'statistics_mount', 'Punto de montaje (solo Icecast)')
+        secret(monitoring, 'statistics', 'Token Bearer opcional')
+        probe(monitoring, 'Estadísticas')
+        note(monitoring, 'Son lecturas opcionales de datos reales del servidor; no conectan ni controlan la emisión. JSON genérico: {"listeners": 10}. Se guardan muestras, pico y promedio de oyentes simultáneos; no identifican oyentes únicos ni equivalen al número total de personas. Un fallo no se registra como cero oyentes.')
 
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
@@ -352,7 +416,7 @@ class SettingsDialog(QDialog):
             elif isinstance(field, QCheckBox):
                 values[key] = field.isChecked()
             elif isinstance(field, QComboBox):
-                values[key] = field.currentData() if key in ('theme', 'priority', 'encoder_format', 'encoder_sample_rate') else field.currentText()
+                values[key] = field.currentData() if key in ('theme', 'priority', 'encoder_format', 'encoder_sample_rate', 'statistics_format') else field.currentText()
             elif isinstance(field, QSpinBox):
                 values[key] = field.value()
             else:

@@ -56,6 +56,18 @@ class Config:
     excluded_folders: list[str] = field(default_factory=list)
     folder_rules: list[dict] = field(default_factory=list)
     station_genre: str = ""
+    title_format: str = "{title} - {artist}"
+    audio_monitor_enabled: bool = False
+    statistics_enabled: bool = False
+    statistics_url: str = ""
+    statistics_format: str = "generic"
+    statistics_mount: str = "/live.mp3"
+    monitor_interval_seconds: int = 60
+    monitor_sample_seconds: int = 5
+    monitor_silence_seconds: int = 3
+    monitor_threshold_db: int = -50
+    monitor_confirmations: int = 2
+    monitor_retention_days: int = 30
     receiver_enabled: bool = False
     receiver_url: str = ""
     receiver_heartbeat_seconds: int = 10
@@ -106,6 +118,28 @@ class Config:
             raise ValueError("El intervalo debe estar entre 1 y 30 segundos")
         if self.priority not in ("radioboss", "spotify"):
             raise ValueError("Prioridad inválida")
+        from .title_format import validate_format
+        validate_format(self.title_format)
+        for key, low, high in (('monitor_interval_seconds', 15, 300), ('monitor_sample_seconds', 3, 10),
+                               ('monitor_silence_seconds', 1, 10), ('monitor_threshold_db', -90, -10),
+                               ('monitor_confirmations', 1, 5), ('monitor_retention_days', 1, 365)):
+            if not low <= getattr(self, key) <= high:
+                raise ValueError(f'{key}: usa un valor entre {low} y {high}')
+        if self.monitor_silence_seconds > self.monitor_sample_seconds:
+            raise ValueError('El silencio mínimo no puede superar la duración de la muestra.')
+        if self.audio_monitor_enabled and not self.stream_url:
+            raise ValueError('Completa el enlace de audio para activar el monitoreo.')
+        if self.statistics_format not in ('generic', 'icecast', 'azuracast'):
+            raise ValueError('Formato de estadísticas inválido')
+        if self.statistics_url:
+            self._url(self.statistics_url)
+            parsed = urlsplit(self.statistics_url)
+            if parsed.scheme != 'https' and parsed.hostname not in ('127.0.0.1', 'localhost', '::1'):
+                raise ValueError('La API de estadísticas requiere HTTPS, salvo pruebas locales.')
+        if self.statistics_enabled and not self.statistics_url:
+            raise ValueError('Completa la dirección de estadísticas.')
+        if not self.statistics_mount.startswith('/'):
+            raise ValueError('El punto de montaje debe comenzar con /.')
         if not 1 <= self.receiver_heartbeat_seconds <= 10:
             raise ValueError('La confirmación al receptor debe ser cada 1–10 segundos.')
         if self.receiver_url:

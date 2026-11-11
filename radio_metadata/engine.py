@@ -9,6 +9,7 @@ from .outputs import LocalOutput, WebDavOutput
 from .sources import make_sources
 from .storage import History
 from .publication import ReceiverOutput
+from .monitoring import BroadcastMonitor, MonitorHistory
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +26,9 @@ class Engine:
         self.server = None
         self.server_error = ''
         self.remote_records = []
+        self.monitor = None
+        self.monitor_history = MonitorHistory(directory / ('demo-monitor.sqlite3' if demo else 'monitor.sqlite3'))
+        self.force_monitor = False
         self.configure(config)
 
     def configure(self, config):
@@ -35,7 +39,10 @@ class Engine:
         self.outputs = []
         self.receiver = ReceiverOutput(config, self.local.directory, self.credentials) if config.receiver_enabled and not self.demo else None
         self.webdav = WebDavOutput(config, self.local.directory, self.credentials) if config.webdav_enabled and not self.demo else None
-        self.monitor = None
+        if self.monitor:
+            self.monitor.close()
+        self.monitor = BroadcastMonitor(config, self.credentials) if (config.audio_monitor_enabled or config.statistics_enabled) and not self.demo else None
+        self.monitor_history.configure_scope(config)
         self.remote_records = []
         if self.server:
             self.server.close()
@@ -92,6 +99,19 @@ class Engine:
             log.error('Historial: %s', type(error).__name__)
             errors.append('No se pudo guardar el historial')
         statuses = await self.publish(decision)
+        monitor_rows = []
+        try:
+            if self.monitor:
+                monitor_rows, completed = self.monitor.poll(force=self.force_monitor)
+                if completed:
+                    self.monitor_history.record(completed, self.config)
+            self.remote_records = dict(self.monitor_history.view(), records=monitor_rows,
+                                       demo=self.demo, audio_enabled=self.config.audio_monitor_enabled,
+                                       statistics_enabled=self.config.statistics_enabled)
+        except Exception as error:
+            log.error('Monitoreo: %s', type(error).__name__)
+            statuses.append('No se pudieron actualizar los datos de monitoreo.')
+        self.force_monitor = False
         if self.last_state != (decision.source, decision.reason, decision.conflict):
             log.info('Selección: %s; %s; conflicto=%s', decision.source, decision.reason, decision.conflict)
             self.last_state = decision.source, decision.reason, decision.conflict
@@ -102,6 +122,9 @@ class Engine:
         return decision, snapshots, errors + statuses, rows
 
     def close(self):
+        if self.monitor:
+            self.monitor.close()
+        self.monitor_history.close()
         if self.server:
             self.server.close()
             self.server = None

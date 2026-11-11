@@ -168,7 +168,7 @@ class CredentialsTests(unittest.TestCase):
             self.assertEqual(state['title'], 'Canción real')
             self.assertEqual(state['display_message'], '')
             from defusedxml import ElementTree as ET
-            self.assertEqual(ET.fromstring((Path(tmp) / 'nowplaying.xml').read_bytes()).find('TRACK').get('CASTTITLE'), 'Artista real - Canción real')
+            self.assertEqual(ET.fromstring((Path(tmp) / 'nowplaying.xml').read_bytes()).find('TRACK').get('CASTTITLE'), 'Canción real - Artista real')
 
     def test_readonly_connection_checks_use_pending_keys_without_publishing(self):
         vault = MemoryCredentials()

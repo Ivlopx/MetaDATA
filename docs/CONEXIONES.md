@@ -7,7 +7,7 @@ MetaDATA prepara información musical independientemente del emisor. La captura 
 - **RadioBOSS:** configura la API HTTP local, usuario cuando corresponda y contraseña desde Conexiones → RadioBOSS. La consulta obtiene estado, metadatos y portada disponibles. No controla la reproducción.
 - **Spotify:** consulta las sesiones multimedia de Windows. No requiere una clave API; necesita que la aplicación exponga una sesión. La clasificación de anuncios tiene límites y no identifica infaliblemente el audio que sale de una consola.
 
-La prioridad, carpetas y exclusiones se configuran en Ajustes → Música. Pausar metadatos vacía los campos musicales y los anuncios excluidos no entran al historial.
+La prioridad se configura en Ajustes → Fuentes; las carpetas y exclusiones, en Ajustes → Reglas. Pausar metadatos vacía los campos musicales y los anuncios excluidos no entran al historial.
 
 ## Now Playing: archivos para tu emisor
 
@@ -15,7 +15,7 @@ Desde Conexiones → **Now Playing**, o Ajustes → **Now Playing**, puedes eleg
 
 | Salida | Contenido | Cómo integrarla |
 | --- | --- | --- |
-| `nowplaying.txt` | Artista - Título, UTF-8; línea vacía en pausas | Programa que lea el título de un archivo de texto |
+| `nowplaying.txt` | Título combinado configurable, UTF-8; línea vacía en pausas | Programa que lea el título de un archivo de texto |
 | `nowplaying.xml` | Atributos musicales separados y `TRACK/CASTTITLE` combinado | Configurar la plantilla que admita el lector XML del emisor |
 | `nowplaying.json` | Esquema propio de MetaDATA con datos musicales y referencia a imagen | Integración o reproductor que conozca esos campos |
 | `covers/` | Imágenes separadas de los archivos de texto | El consumidor necesita un mecanismo para leer o publicar imágenes |
@@ -51,3 +51,7 @@ Las imágenes viven en `covers`; la caché local se limita por historial visible
 Se retiraron las conexiones AzuraCast y Zeno.fm de la pantalla Conexiones, la página Icecast directo y el monitor de servidores. El motor ignora las antiguas salidas directas incluso si estaban activadas en el perfil. Al guardar ajustes se desactivan sus indicadores, conservando las direcciones históricas y las credenciales guardadas; no se borran claves ni se cambian servidores o conexiones del emisor.
 
 Los conectores e investigaciones antiguos pueden seguir presentes como código/documentación de referencia, pero no forman parte del flujo activo de la app. Para poner la estación al aire se configura el destino en el emisor elegido.
+
+## Monitoreo de solo lectura
+
+La pestaña Monitoreo añade comprobaciones de audio y estadísticas opcionales del servidor. No utiliza contraseñas de emisión ni publica datos al servidor. Puede usar un token de lectura configurado desde la app. Consulta la [guía de monitoreo](MONITOREO.md).

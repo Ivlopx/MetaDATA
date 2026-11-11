@@ -1,5 +1,7 @@
 # MetaDATA 0.5.0a1
 
+Las funciones que aquí figuraban como posteriores se ampliaron en [0.5.0a2](NOVEDADES-0.5.0a2.md).
+
 ## Fuentes y prioridad
 
 En Ajustes → Fuentes se detectan las sesiones multimedia activas de Windows. Cada fuente adicional tiene permisos independientes para consultar y publicar, y se puede subir o bajar en la prioridad. Las fuentes nuevas permanecen desactivadas. No se garantiza que toda aplicación instalada exponga datos mediante Windows; no se afirma que una sesión sea la señal al aire.

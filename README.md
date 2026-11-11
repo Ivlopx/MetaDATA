@@ -1,4 +1,4 @@
-# MetaDATA · copia de prueba 0.5.0a1
+# MetaDATA · copia de prueba 0.5.0a2
 
 **Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
@@ -6,9 +6,9 @@ Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar l
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos de forma independiente del programa de transmisión. El emisor que elijas captura y envía el audio; MetaDATA prepara archivos y, opcionalmente, audio codificado para integraciones compatibles.
 
-La interfaz utiliza controles de escritorio, colores del sistema y cuatro pantallas: **Inicio, Historial, Conexiones y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Funciona en segundo plano con bandeja, ocultar y restaurar.
+La interfaz utiliza controles de escritorio, colores del sistema y cinco pantallas: **Inicio, Historial, Conexiones, Monitoreo y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
-Novedades de esta versión: [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
+Novedades de esta versión: [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md). También incluye [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
 
 ## Instalar y actualizar en Windows
 
@@ -51,6 +51,8 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 
 En **Ajustes → Fuentes**, pulsa **Detectar reproductores** con las aplicaciones abiertas. Las nuevas sesiones de Windows se agregan desactivadas: marca **Consultar** y después **Publicar** si corresponde. Usa **Subir/Bajar** para ordenar la prioridad. La detección muestra sesiones disponibles, no un inventario de aplicaciones instaladas. VLC, Deezer, reproductores de Windows y otras aplicaciones solo funcionan si exponen una sesión multimedia con los datos necesarios. Varias sesiones simultáneas de una misma aplicación se rechazan cuando no hay una selección inequívoca. El tipo desconocido necesita autorización explícita; los vídeos no se admiten como música.
 
+En **Ajustes → Now Playing**, elige el formato del título combinado desde una lista o usa **Personalizado** con vista previa. Por defecto es **Canción - Artista**. Artista, título y álbum siguen separados en el XML/JSON y las etiquetas de los encoders. RadioCaster puede mantener `{TRACK[CASTTITLE]}` sin volver a cambiar su plantilla. El receptor decide cómo presenta o interpreta ese texto; el orden visual no es universal.
+
 En Inicio selecciona Automático o una fuente concreta. Si varias reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
 
 Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y publica el vaciado de datos musicales por las salidas activas. Sin bandeja, Ocultar minimiza y X sale. El autoarranque no está implementado; puedes añadir un acceso directo a `iniciar.bat` en la carpeta de inicio de Windows después de validar la instalación.
@@ -59,7 +61,7 @@ Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y public
 
 **Ajustes → Publicación** permite enviar artista, título, álbum, otros campos disponibles y la portada juntos a tu servidor. La clave se configura en la app. El receptor publica rutas estables, confirma vigencia y vacía datos al caducar o recibir una pausa. Incluye servicio Python y configuración Docker Compose con almacenamiento persistente: [instalación y contrato de la API](docs/RECEPTOR.md). No requiere conectar directamente MetaDATA a un proveedor de streaming. La web futura consumirá estas rutas y no forma parte de este proyecto.
 
-El alcance actual incluye fuentes, reglas, Now Playing, encoders y publicación. El monitoreo de audio/silencios, los incidentes y las estadísticas de oyentes siguen pendientes; las peticiones al JSON no se cuentan como oyentes. El instalador completo con FFmpeg se prepara al finalizar la etapa de refinamiento.
+El alcance actual incluye fuentes, reglas, Now Playing, encoders, publicación, monitoreo por muestras e incidentes y estadísticas opcionales del servidor de audio. Consulta la [guía de monitoreo](docs/MONITOREO.md). Las peticiones al JSON no se cuentan como oyentes. El instalador completo con FFmpeg y el despliegue se preparan al final.
 
 ## Pausas y carátulas
 

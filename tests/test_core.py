@@ -117,7 +117,7 @@ class AdapterTests(unittest.TestCase):
         song = resolve([music()], Config(music_folders=[r"C:\Musica"]))
         with patch.dict(os.environ, TEST_RADIO_PASS="dummy-secret"), patch("radio_metadata.outputs.httpx.Client", side_effect=lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)):
             self.assertIn("aceptada", output.send(song))
-            self.assertEqual(requests[0].url.params["song"], "Björk - Jóga")
+            self.assertEqual(requests[0].url.params["song"], "Jóga - Björk")
             self.assertEqual(requests[0].url.params["mount"], "/live")
             self.assertNotIn("dummy-secret", str(requests[0].url))
             self.assertTrue(requests[0].headers["Authorization"].startswith("Basic "))

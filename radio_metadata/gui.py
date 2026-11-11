@@ -68,6 +68,8 @@ class Worker(QThread):
                         engine.mode = value
                     elif name == "scenario":
                         engine.scenario = value
+                    elif name == 'probe':
+                        engine.force_monitor = True
                 self.updated.emit(loop.run_until_complete(engine.tick()) + (engine.remote_records,))
                 self.wake.wait(engine.config.poll_seconds)
         except Exception as error:
@@ -176,6 +178,10 @@ class MainWindow(QMainWindow):
         controls.addWidget(preview)
         controls.addStretch()
         home.addLayout(controls)
+        self.monitor_summary = QLabel('')
+        self.monitor_summary.setWordWrap(True)
+        self.monitor_summary.setTextFormat(Qt.TextFormat.PlainText)
+        home.addWidget(self.monitor_summary)
         self.mode.setToolTip('Selección por reproducción y prioridad; verifica el audio en la consola.')
         if demo:
             self.scenarios = QComboBox()
@@ -228,10 +234,18 @@ class MainWindow(QMainWindow):
         details.toggled.connect(lambda visible: details.setText('Ocultar detalles' if visible else 'Mostrar detalles'))
         connections.addWidget(self.diagnostics, 1)
 
+        from .monitor_panel import MonitorPanel
+        monitor_page = page('Monitoreo')
+        self.monitor_panel = MonitorPanel()
+        monitor_page.addWidget(self.monitor_panel)
+        self.monitor_panel.check_button.clicked.connect(lambda: self.worker.command('probe', None))
+        self.monitor_panel.settings_button.clicked.connect(lambda: self.settings('Monitoreo'))
+
         settings_page = page('Ajustes')
         for name, description in [('Estación', 'Identidad, logo y apariencia'), ('Fuentes', 'Reproductores, permisos y prioridades'), ('Reglas', 'Listas blanca y negra, subcarpetas y exclusiones'),
                                   ('Publicación', 'Enviar datos y carátulas al receptor autohospedado'),
                                   ('Carátulas', 'Reproductor local y alojamiento de imágenes'), ('Now Playing', 'TXT, XML y JSON para tu aplicación de transmisión'), ('Codificador', 'AAC principal, MP3 de respaldo y prueba HLS con portada'),
+                                  ('Monitoreo', 'Audio, silencio, incidentes y estadísticas de oyentes'),
                                   ('Avanzados', 'Intervalos y reproductor local')]:
             row = QHBoxLayout()
             label = QLabel(description)
@@ -395,6 +409,10 @@ class MainWindow(QMainWindow):
             lines.append("Datos sintéticos. No se consulta ni publica a servidores; salida demo separada.")
         self.diagnostics.setPlainText("\n".join(lines))
         self.history_rows = rows
+        if extra and isinstance(extra[0], dict):
+            self.monitor_panel.update_data(extra[0])
+            problems = [row['message'] for row in extra[0].get('records', []) if row['state'] != 'ok']
+            self.monitor_summary.setText('Monitoreo: ' + ' · '.join(problems) if problems else '')
         self.recent.setRowCount(min(3, len(rows)))
         for i, row in enumerate(rows[:3]):
             for j, value in enumerate((self.display_time(row[0], short=True), row[2], row[3])):
@@ -419,6 +437,10 @@ class MainWindow(QMainWindow):
 
     def report_failure(self, message):
         self.output_label.setText(message)
+        self.monitor_summary.setText('Monitoreo detenido · datos sin actualizar')
+        for channel in self.monitor_panel.labels:
+            self.monitor_panel.labels[channel].setText('Administrador detenido · estado sin actualizar')
+            self.monitor_panel.dots[channel].setPixmap(status_pixmap('unknown'))
         for name, dot in self.connection_dots.items():
             state = 'error' if name == 'Now Playing' else 'unknown'
             dot.setPixmap(status_pixmap(state))

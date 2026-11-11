@@ -19,6 +19,10 @@ class OverlayCredentials:
 
 async def check_connection(name, config, credentials, directory):
     try:
+        if name == 'Estadísticas':
+            from .monitoring import probe_statistics
+            result = await asyncio.to_thread(probe_statistics, config, credentials)
+            return result['state'] == 'ok', (str(result['listeners']) + ' oyentes simultáneos comunicados por el servidor.' if result['state'] == 'ok' else result['message'])
         if name == 'Receptor':
             from .publication import publication_key
             def check_receiver():

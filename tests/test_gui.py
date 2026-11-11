@@ -111,7 +111,7 @@ class GuiTests(unittest.TestCase):
             config = store.load()
             window = MainWindow(store, config, demo=True)
             try:
-                self.assertEqual([window.tabs.tabText(i) for i in range(4)], ['Inicio', 'Historial', 'Conexiones', 'Ajustes'])
+                self.assertEqual([window.tabs.tabText(i) for i in range(5)], ['Inicio', 'Historial', 'Conexiones', 'Monitoreo', 'Ajustes'])
                 window.worker.stop()
                 window.worker.wait()
                 history = History(Path(tmp) / 'demo-history.sqlite3')
@@ -231,3 +231,37 @@ class GuiTests(unittest.TestCase):
             cancelled.reject()
             self.assertTrue(store.load().windows_sources[0]['publish'])
             self.assertEqual(len(store.load().folder_rules), 2)
+
+    def test_title_presets_custom_preview_and_monitor_settings_roundtrip(self):
+        from PySide6.QtWidgets import QApplication
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.settings import SettingsDialog
+        from radio_metadata.credentials import MemoryCredentials
+        from radio_metadata.monitor_panel import MonitorPanel
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            config = store.load()
+            dialog = SettingsDialog(config, store=store, credentials=MemoryCredentials(), page='Now Playing')
+            dialog.title_presets.setCurrentIndex(1)
+            self.assertEqual(dialog.fields['title_format'].text(), '{artist} - {title}')
+            dialog.title_presets.setCurrentIndex(4)
+            dialog.fields['title_format'].setText('{title} | {artist}')
+            dialog.fields['audio_monitor_enabled'].setChecked(True)
+            dialog.fields['stream_url'].setText('https://audio.example/live.aac')
+            dialog.fields['statistics_enabled'].setChecked(True)
+            dialog.fields['statistics_url'].setText('https://stats.example/current')
+            dialog.fields['statistics_format'].setCurrentIndex(1)
+            dialog.save()
+            saved = store.load()
+            self.assertEqual(saved.title_format, '{title} | {artist}')
+            self.assertEqual(saved.statistics_format, 'icecast')
+            reopened = SettingsDialog(saved, store=store, credentials=MemoryCredentials())
+            self.assertEqual(reopened.title_presets.currentIndex(), 4)
+            self.assertEqual(reopened.fields['title_format'].text(), '{title} | {artist}')
+            panel = MonitorPanel()
+            panel.update_data(dict(statistics_enabled=True, audio_enabled=False, records=[dict(
+                channel='statistics', state='error', message='Sin datos', checked_at='2026-11-11T10:00:00+00:00', listeners=None)],
+                samples=[], incidents=[], summary=(0, None, None)))
+            self.assertIn('Sin datos', panel.labels['statistics'].text())
+            self.assertNotIn('0 simultáneos', panel.labels['statistics'].text())

@@ -106,6 +106,7 @@ def resolve(snapshots, config, mode="auto"):
     # Resolve source BEFORE filtering. An ad in the selected source must never reveal a lower-priority song.
     if not valid_music(chosen, config):
         return Decision(config.break_message, chosen.source, "Contenido excluido, sin clasificar o solo observación", conflict=conflict)
-    return Decision(f"{clean(chosen.artist)} - {clean(chosen.title)}", chosen.source,
+    from .title_format import format_title
+    return Decision(format_title(chosen, config.title_format), chosen.source,
                     "Prioridad configurada; comprobar consola" if conflict else "Reproducción detectada; comprobar consola",
                     chosen, conflict)
