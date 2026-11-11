@@ -16,3 +16,5 @@ outputs/*.zip
 *.log
 .DS_Store
 .pytest_cache/
+receiver-data/
+receiver.json

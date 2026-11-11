@@ -14,8 +14,9 @@ def apply_appearance(app: QApplication, theme='system'):
     app.styleHints().setColorScheme(scheme)
 
 
-def source_name(value):
-    return {'radioboss': 'RadioBOSS', 'spotify': 'Spotify', 'estación': 'Estación'}.get(value, value)
+def source_name(value, config=None):
+    from .source_catalog import source_label
+    return source_label(value, config)
 
 
 def brand_icon(name):

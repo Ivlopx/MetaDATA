@@ -70,6 +70,7 @@ class LocalOutput:
             'artwork_file': (song_file or logo_file) if track else '', 'logo_file': logo_file,
             'artwork_origin': (track.artwork_origin or 'source') if song_file else ('station_logo' if track and logo_file else ''),
             'station': config.station_name, 'slogan': config.slogan, 'description': config.description,
+            'station_genre': config.station_genre,
             'website': config.website, 'idle_message': config.idle_message, 'stream_url': config.stream_url,
         }
         # No input filename, credentials, or observed/excluded tracks in public exports.

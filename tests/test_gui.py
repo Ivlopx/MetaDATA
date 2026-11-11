@@ -51,7 +51,7 @@ class GuiTests(unittest.TestCase):
                 self.assertEqual(window.history.rowCount(), 1)
                 self.assertEqual(window.album.text(), "")
                 window.scenarios.setCurrentIndex(2)
-                until(lambda: "Ambas" in window.reason.text() and window.title.text() == "Canción de prueba")
+                until(lambda: "Varias" in window.reason.text() and window.title.text() == "Canción de prueba")
                 window.mode.setCurrentIndex(3)
                 until(lambda: window.title.text() == config.break_message and "activado" in window.reason.text())
                 if os.environ.get("RADIO_SCREENSHOT"):
@@ -77,7 +77,7 @@ class GuiTests(unittest.TestCase):
             config = store.load()
             vault = MemoryCredentials()
             dialog = SettingsDialog(config, store=store, credentials=vault)
-            self.assertEqual(dialog.fields["priority"].currentText(), "RadioBOSS")
+            self.assertEqual(dialog.source_settings.rows[0]['name'], "RadioBOSS")
             secret = dialog.secrets['radioboss']
             self.assertEqual(secret.edit.echoMode(), QLineEdit.EchoMode.Password)
             secret.edit.setText('private-test-key')
@@ -157,7 +157,7 @@ class GuiTests(unittest.TestCase):
                 with patch('radio_metadata.output_files.QDesktopServices.openUrl', return_value=True) as opened:
                     files.open_button.click()
                     self.assertEqual(opened.call_args.args[0].toLocalFile(), str((Path(tmp) / 'demo-output').resolve()))
-                self.assertEqual(set(window.connection_labels), {'RadioBOSS', 'Spotify', 'Now Playing'})
+                self.assertEqual(set(window.connection_labels), {'RadioBOSS', 'Spotify', 'Now Playing', 'Receptor'})
                 dialog = SettingsDialog(config, window, page='Now Playing')
                 self.assertTrue(dialog.findChildren(OutputFilesWidget))
                 dialog.fields['history_visible_limit'].setValue(30)
@@ -189,3 +189,45 @@ class GuiTests(unittest.TestCase):
                 self.assertEqual(dialog.encoder_mime.text(), 'audio/ogg')
             finally:
                 window.quit()
+
+    def test_discovered_sources_permissions_priority_and_folder_rules_save_cancel(self):
+        from PySide6.QtWidgets import QApplication
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.settings import SettingsDialog
+        from radio_metadata.credentials import MemoryCredentials
+        from radio_metadata.source_catalog import windows_source_id
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            config = store.load()
+            vault = MemoryCredentials()
+            dialog = SettingsDialog(config, store=store, credentials=vault, page='Fuentes')
+            sources = dialog.source_settings
+            sources.apply_discovery([dict(app_id='vlc.exe', name='VLC', playing=True, sessions=1)])
+            self.assertFalse(sources.rows[-1]['enabled'])
+            self.assertFalse(sources.rows[-1]['publish'])
+            sources.table.cellWidget(2, 2).setChecked(True)
+            sources.table.cellWidget(2, 3).setChecked(True)
+            sources.table.selectRow(2)
+            sources.move(-1)
+            sources.move(-1)
+            dialog.folder_settings.add_rule(r'C:\Music', 'allow', False)
+            dialog.folder_settings.add_rule(r'C:\Music\Ads', 'block', True)
+            dialog.fields['station_genre'].setText('Pop')
+            dialog.fields['receiver_url'].setText('https://metadata.example')
+            dialog.fields['receiver_enabled'].setChecked(True)
+            dialog.secrets['receiver'].edit.setText('test-publication-key-long-enough-123')
+            dialog.secrets['receiver'].mark_changed()
+            dialog.save()
+            saved = store.load()
+            self.assertEqual(saved.source_priority[0], windows_source_id('vlc.exe'))
+            self.assertTrue(saved.windows_sources[0]['publish'])
+            self.assertFalse(saved.folder_rules[0]['recursive'])
+            self.assertEqual(saved.station_genre, 'Pop')
+            self.assertNotIn('test-publication-key', store.path.read_text())
+            cancelled = SettingsDialog(saved, store=store, credentials=vault)
+            cancelled.source_settings.rows[0]['publish'] = False
+            cancelled.folder_settings.rules.clear()
+            cancelled.reject()
+            self.assertTrue(store.load().windows_sources[0]['publish'])
+            self.assertEqual(len(store.load().folder_rules), 2)

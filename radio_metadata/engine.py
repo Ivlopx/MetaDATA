@@ -8,6 +8,7 @@ from .model import Snapshot, resolve
 from .outputs import LocalOutput, WebDavOutput
 from .sources import make_sources
 from .storage import History
+from .publication import ReceiverOutput
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class Engine:
         self.cache_history = self.history.recent_artwork_files(config.history_visible_limit)
         # Legacy destination settings must never restart retired direct writers.
         self.outputs = []
+        self.receiver = ReceiverOutput(config, self.local.directory, self.credentials) if config.receiver_enabled and not self.demo else None
         self.webdav = WebDavOutput(config, self.local.directory, self.credentials) if config.webdav_enabled and not self.demo else None
         self.monitor = None
         self.remote_records = []
@@ -55,6 +57,8 @@ class Engine:
             statuses.append('Error de salida local: el emisor podría conservar el título anterior')
         if self.webdav:
             statuses.append(await asyncio.to_thread(self.webdav.send, decision, state))
+        if self.receiver:
+            statuses.append(await asyncio.to_thread(self.receiver.send, decision, state))
         if state is not None:
             state['artwork_url'] = self.webdav.artwork_url if self.webdav else ''
         if self.server:
@@ -75,7 +79,8 @@ class Engine:
         mode = self.mode_provider() if self.mode_provider else self.mode
         sources = [] if mode == 'station' else make_sources(self.config, self.demo, self.scenario, credentials=self.credentials)
         snapshots = await asyncio.gather(*(poll(s) for s in sources))
-        effective = replace(self.config, music_folders=[r'C:\Musica'], spotify_publish=True) if self.demo else self.config
+        effective = replace(self.config, music_folders=[r'C:\Musica'], excluded_folders=[], folder_rules=[],
+                            source_priority=[], windows_sources=[], spotify_publish=True) if self.demo else self.config
         # Honor an operator override that arrived while a source request was in flight.
         mode = self.mode_provider() if self.mode_provider else self.mode
         decision = resolve(snapshots, effective, mode)

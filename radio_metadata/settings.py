@@ -7,14 +7,18 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, 
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox, QPlainTextEdit,
     QPushButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
 
-from .appearance import source_name, brand_icon
 from .output_files import OutputFilesWidget
 from .config import Config
+from .source_settings import SourceSettings
+from .folder_settings import FolderSettings
 from .credentials import CredentialError, MemoryCredentials, secret_id, commit_settings
 from .connection_tests import OverlayCredentials, check_connection
 
 
 def credential_key(service, config):
+    if service == 'receiver':
+        from .publication import publication_key
+        return publication_key(config)
     if service == 'radioboss':
         return secret_id(service, config.radioboss_url, config.radioboss_user)
     return secret_id('webdav', config.webdav_upload_url, config.webdav_username)
@@ -150,8 +154,8 @@ class SettingsDialog(QDialog):
             form.addRow(button)
 
         general = section('Estación')
-        for key, label in [('station_name', 'Nombre'), ('slogan', 'Eslogan'), ('description', 'Descripción'),
-                           ('website', 'Sitio web'), ('idle_message', 'Mensaje visual sin música'), ('break_message', 'Mensaje visual en pausas')]:
+        for key, label in [('station_name', 'Nombre'), ('description', 'Descripción'),
+                           ('website', 'Sitio web'), ('station_genre', 'Género de la estación')]:
             text(general, key, label)
         text(general, 'logo_path', 'Logo (archivo de imagen)')
         choose = QPushButton('Elegir logo…')
@@ -165,49 +169,57 @@ class SettingsDialog(QDialog):
         general.addRow('Apariencia', theme)
         note(general, 'Sin música se envían artista y título vacíos. Los mensajes y el logo se muestran solo en MetaDATA y su reproductor; no se publican como una canción.')
 
-        rules = section('Música')
+        messages_button = QPushButton('Personalizar mensajes visuales')
+        messages_button.setCheckable(True)
+        general.addRow(messages_button)
+        messages = QWidget()
+        messages_form = QFormLayout(messages)
+        for key, label in [('slogan', 'Eslogan'), ('idle_message', 'Sin música'), ('break_message', 'En pausa')]:
+            text(messages_form, key, label)
+        messages.setVisible(False)
+        messages_button.toggled.connect(messages.setVisible)
+        general.addRow(messages)
+
+        rules = section('Reglas')
         number(rules, 'history_visible_limit', 'Canciones visibles en historial', 10, 1000)
         number(rules, 'cover_cache_mb', 'Espacio máximo para portadas (MB)', 8, 4096)
         from .image_cache import cache_usage
         count, size = cache_usage(self.data_directory / ('demo-output' if demo else 'output'))
         rules.addRow('Uso actual de portadas', QLabel(f'{count} imágenes · {size / (1024 * 1024):.1f} MB'))
         note(rules, 'La caché conserva las portadas de las canciones visibles, sin duplicar imágenes, además de la portada y el logo actuales. Si se alcanza el límite de espacio se retiran las menos recientes. Los límites se aplican a esta computadora; el historial de texto no se borra ni se eliminan imágenes del alojamiento remoto.')
-        priority = QComboBox()
-        for value in ('radioboss', 'spotify'):
-            priority.addItem(brand_icon(value), source_name(value), value)
-        priority.setCurrentIndex(priority.findData(config.priority))
-        self.fields['priority'] = priority
-        rules.addRow('Si ambas reproducen, preferir', priority)
-        for key, label in [('music_folders', 'Carpetas de música RadioBOSS'), ('excluded_folders', 'Carpetas excluidas'),
-                           ('excluded_terms', 'Palabras excluidas'), ('excluded_types', 'Tipos RadioBOSS excluidos')]:
+        self.folder_settings = FolderSettings(config)
+        rules.addRow(self.folder_settings)
+        note(rules, 'Las carpetas de la lista blanca autorizan archivos de RadioBOSS. La lista negra tiene prioridad. Cada regla permite elegir si abarca subcarpetas. Las exclusiones de palabras y tipos también se aplican a las fuentes multimedia.')
+        for key, label in [('excluded_terms', 'Palabras excluidas'), ('excluded_types', 'Tipos excluidos')]:
             field = QPlainTextEdit('\n'.join(getattr(config, key)))
             field.setMaximumHeight(80)
             self.fields[key] = field
             rules.addRow(label + '\nUna por línea', field)
-        folder = QPushButton('Agregar carpeta de música…')
-        folder.clicked.connect(self.choose_folder)
-        rules.addRow(folder)
-        note(rules, 'Sin carpetas de música aprobadas, los datos de canción quedan vacíos. Conserva anuncios, jingles y promos en carpetas excluidas.')
+
+        sources = section('Fuentes')
+        self.source_settings = SourceSettings(config, demo=demo)
+        sources.addRow(self.source_settings)
 
         rb = section('RadioBOSS')
-        check(rb, 'radioboss_enabled', 'Consultar RadioBOSS')
         text(rb, 'radioboss_url', 'Dirección de la API')
         text(rb, 'radioboss_user', 'Usuario (opcional)')
         secret(rb, 'radioboss', 'Contraseña')
         probe(rb, 'RadioBOSS')
-        note(rb, 'Activa el control remoto por HTTP en RadioBOSS. La prueba consulta el estado; no controla su reproducción.')
-
-        sp = section('Spotify')
-        check(sp, 'spotify_enabled', 'Consultar Spotify en Windows')
-        check(sp, 'spotify_publish', 'Permitir canciones de Spotify en selección e historial')
-        note(sp, 'No requiere una clave API. Abre Spotify en esta computadora. La detección de anuncios tiene límites: usa Pausar metadatos cuando sea necesario.')
-        probe(sp, 'Spotify')
+        note(rb, 'Activa el control remoto por HTTP en RadioBOSS. La consulta y prioridad se activan en Fuentes. La prueba consulta el estado; no controla su reproducción.')
 
         caster = section('Now Playing')
         note(caster, 'Elige el formato que acepte tu aplicación de transmisión: TXT para un título combinado, XML para atributos separados o JSON para integraciones. Copia la ruta o abre la carpeta y selecciona el archivo en tu emisor.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
         note(caster, 'Las conexiones y contraseñas de transmisión se configuran en el emisor que elijas. Cada programa interpreta los formatos de manera distinta; no se presupone compatibilidad con todos. Los archivos de texto no transportan imágenes por sí solos. Ejemplo RadioCaster: Read from XML file, Title Format {TRACK[CASTTITLE]}.')
         probe(caster, 'Now Playing', 'Comprobar archivos')
+
+        publish = section('Publicación')
+        check(publish, 'receiver_enabled', 'Enviar al receptor autohospedado')
+        text(publish, 'receiver_url', 'Dirección HTTPS del receptor')
+        secret(publish, 'receiver', 'Clave de publicación')
+        number(publish, 'receiver_heartbeat_seconds', 'Confirmar vigencia cada (segundos)', 1, 10)
+        probe(publish, 'Receptor')
+        note(publish, 'Envía la ficha y la imagen juntas al cambiar la canción. Durante pausas y exclusiones vacía los campos. El receptor publica /nowplaying.json y /artwork; si se corta la conexión, caducan automáticamente. Funciona con tu servidor, independientemente del programa de emisión. Requiere instalar el receptor incluido en el proyecto.')
 
         art = section('Carátulas')
         text(art, 'stream_url', 'Enlace de audio')
@@ -261,11 +273,10 @@ class SettingsDialog(QDialog):
         self.fields['encoder_radiocaster_variables'].toggled.connect(self.refresh_ogg_command)
         self.encoder_format_changed()
         self.refresh_ogg_command()
-        note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; todavía no está validado en navegadores ni se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
+        note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; hay una prueba de laboratorio con Chrome y hls.js, pendiente de validar con tu emisor en Windows. No se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
 
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
-        number(advanced, 'remote_poll_seconds', 'Consultar servidores cada (segundos)', 5, 300)
         number(advanced, 'local_server_port', 'Puerto del reproductor local', 1024, 65535)
         number(advanced, 'stale_seconds', 'Ocultar datos vencidos tras (segundos)', 15, 300)
         text(advanced, 'spotify_app_id_contains', 'Identificador de Spotify contiene')
@@ -280,6 +291,7 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        page = {'Música': 'Reglas', 'Spotify': 'Fuentes'}.get(page, page)
         self.navigation.setCurrentRow(self.page_names.index(page) if page in self.page_names else 0)
 
     def choose_ffmpeg(self):
@@ -327,11 +339,6 @@ class SettingsDialog(QDialog):
         else:
             self.message.setText(self.encoder_command_error or 'Selecciona FFmpeg antes de copiar el comando.')
 
-    def choose_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, 'Carpeta de música')
-        if folder:
-            self.fields['music_folders'].appendPlainText(folder)
-
     def choose_logo(self):
         filename, _ = QFileDialog.getOpenFileName(self, 'Logo', filter='Imágenes (*.png *.jpg *.jpeg *.webp)')
         if filename:
@@ -354,6 +361,10 @@ class SettingsDialog(QDialog):
         values['remote_monitor_enabled'] = False
         values['icecast_targets'] = [dict(target, enabled=False, send_artwork_url=False)
                                     for target in self.original.icecast_targets]
+        values.update(self.source_settings.values())
+        values['folder_rules'] = [dict(rule) for rule in self.folder_settings.rules]
+        values['music_folders'] = [rule['path'] for rule in values['folder_rules'] if rule['action'] == 'allow']
+        values['excluded_folders'] = [rule['path'] for rule in values['folder_rules'] if rule['action'] == 'block']
         config = Config(**values)
         config.validate()
         changes = {}
@@ -365,7 +376,7 @@ class SettingsDialog(QDialog):
         return config, changes
 
     def test_connection(self, service, button):
-        if self.checker and self.checker.isRunning():
+        if any(thread.isRunning() for thread in self.findChildren(QThread)):
             self.message.setText('Espera a que termine la prueba actual.')
             return
         if self.demo and service not in ('Codificador Ogg', 'Codificador'):
@@ -384,13 +395,13 @@ class SettingsDialog(QDialog):
         self.checker.start()
 
     def done(self, result):
-        if self.checker and self.checker.isRunning():
+        if any(thread.isRunning() for thread in self.findChildren(QThread)):
             self.message.setText('Espera a que termine la prueba antes de cerrar los ajustes.')
             return
         super().done(result)
 
     def save(self):
-        if self.checker and self.checker.isRunning():
+        if any(thread.isRunning() for thread in self.findChildren(QThread)):
             self.message.setText('Espera a que termine la prueba antes de guardar.')
             return
         try:

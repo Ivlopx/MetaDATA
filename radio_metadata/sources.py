@@ -11,7 +11,7 @@ from typing import Protocol
 from defusedxml import ElementTree as ET
 import httpx
 
-from .model import Snapshot, inside
+from .model import Snapshot, folder_allowed
 
 MAX_XML = 8 * 1024 * 1024
 
@@ -75,7 +75,7 @@ class RadioBossSource:
         current = parse_playback(await self._request(action="playbackinfo"))
         if not current.playing or not current.filename:
             return current
-        if not inside(current.filename, self.config.music_folders):
+        if not folder_allowed(current.filename, self.config):
             return current  # No need to fetch tags/artwork for unapproved folders.
         tags = ET.fromstring(await self._request(action="readtag", fn=current.filename, artwork="1"))
         file = tags.find("File")
@@ -103,39 +103,66 @@ class RadioBossSource:
         return replace(await self._poll(), available=True)
 
 
-class SpotifyWindowsSource:
-    name = "spotify"
+async def windows_sessions():
+    if sys.platform != 'win32':
+        raise RuntimeError('La detección de reproductores requiere Windows.')
+    from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as Manager
+    manager = await Manager.request_async()
+    return list(manager.get_sessions())
 
-    def __init__(self, config):
-        self.config = config
+
+def windows_media_types():
+    from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionPlaybackStatus
+    from winrt.windows.media import MediaPlaybackType
+    return GlobalSystemMediaTransportControlsSessionPlaybackStatus, MediaPlaybackType
+
+
+async def discover_windows_sessions():
+    from .source_catalog import windows_app_name
+    sessions = await windows_sessions()
+    Status, _ = windows_media_types()
+    found = {}
+    for session in sessions:
+        app_id = session.source_app_user_model_id
+        if not isinstance(app_id, str) or not app_id.strip():
+            continue
+        key = app_id.casefold()
+        row = found.setdefault(key, dict(app_id=app_id, name=windows_app_name(app_id),
+                                        playing=False, sessions=0))
+        row['sessions'] += 1
+        row['playing'] |= session.get_playback_info().playback_status == Status.PLAYING
+    return list(found.values())
+
+
+class WindowsMediaSource:
+    def __init__(self, name, app_id, *, exact=True):
+        self.name, self.app_id, self.exact = name, app_id, exact
 
     async def poll(self):
         if sys.platform != "win32":
             return Snapshot(self.name, error="Sesiones multimedia disponibles solo en Windows")
-        from winrt.windows.media.control import (
-            GlobalSystemMediaTransportControlsSessionManager as Manager,
-            GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
-        )
-        from winrt.windows.media import MediaPlaybackType
-        from winrt.windows.storage.streams import DataReader
-
-        manager = await Manager.request_async()
-        sessions = [s for s in manager.get_sessions()
-                    if self.config.spotify_app_id_contains.casefold() in s.source_app_user_model_id.casefold()]
+        Status, MediaPlaybackType = windows_media_types()
+        def matches(session):
+            app_id = session.source_app_user_model_id.casefold()
+            expected = self.app_id.casefold()
+            return app_id == expected if self.exact else expected in app_id
+        sessions = [session for session in await windows_sessions() if matches(session)]
         playing = [s for s in sessions if s.get_playback_info().playback_status == Status.PLAYING]
         if len(playing) > 1:
-            return Snapshot(self.name, error="Varias sesiones Spotify reproduciendo; selecciona una en Windows")
+            return Snapshot(self.name, error="Varias sesiones de esta aplicación reproducen a la vez; pausa las adicionales")
         if not playing:
             return Snapshot(self.name, available=bool(sessions))
         session = playing[0]
         media = await session.try_get_media_properties_async()
-        kind = "music" if media.playback_type == MediaPlaybackType.MUSIC else "unknown"
+        kind = ('music' if media.playback_type == MediaPlaybackType.MUSIC else
+                'unknown' if media.playback_type in (None, MediaPlaybackType.UNKNOWN) else 'non_music')
         art = b""
         if media.thumbnail:
             try:
                 stream = await media.thumbnail.open_read_async()
                 try:
                     if 0 < stream.size <= 4 * 1024 * 1024:
+                        from winrt.windows.storage.streams import DataReader
                         reader = DataReader(stream)
                         try:
                             size = await reader.load_async(stream.size)
@@ -152,7 +179,7 @@ class SpotifyWindowsSource:
         # Fail closed if playback stopped while reading the thumbnail.
         active = session.get_playback_info().playback_status == Status.PLAYING
         check = await session.try_get_media_properties_async()
-        if (check.artist, check.title, check.album_title) != (media.artist, media.title, media.album_title):
+        if (check.artist, check.title, check.album_title, check.playback_type) != (media.artist, media.title, media.album_title, media.playback_type):
             return Snapshot(self.name, error="Cambio de pista; esperando siguiente lectura")
         duration = position = None
         try:
@@ -165,7 +192,12 @@ class SpotifyWindowsSource:
                         album=media.album_title or "", album_artist=media.album_artist or "",
                         genre=", ".join(media.genres), track_number=nonnegative_int(media.track_number),
                         duration_ms=duration, position_ms=position,
-                        artwork_origin="windows_thumbnail" if art else "")
+                        artwork_origin="windows_thumbnail" if art else "", available=True)
+
+
+class SpotifyWindowsSource(WindowsMediaSource):
+    def __init__(self, config):
+        super().__init__('spotify', config.spotify_app_id_contains, exact=False)
 
 
 class DemoSource:
@@ -195,4 +227,7 @@ def make_sources(config, demo=False, scenario="radioboss", credentials=None):
         sources.append(RadioBossSource(config, credentials))
     if config.spotify_enabled:
         sources.append(SpotifyWindowsSource(config))
+    for row in config.windows_sources:
+        if row['enabled']:
+            sources.append(WindowsMediaSource(row['id'], row['app_id']))
     return sources

@@ -1,0 +1,19 @@
+services:
+  receiver:
+    build:
+      context: ..
+      dockerfile: receiver/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - config:/config
+      - data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    pids_limit: 64
+volumes:
+  config:
+  data:

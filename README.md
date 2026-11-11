@@ -1,12 +1,14 @@
-# MetaDATA · copia de prueba 0.4.0a3
+# MetaDATA · copia de prueba 0.5.0a1
 
-**Rama experimental:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
+**Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
 Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar los ajustes de esta rama. No es necesario instalar otra copia si ya trabajas en ella. Las conexiones en vivo no se modifican automáticamente. Incluye botones para copiar/abrir rutas, carpeta `covers`, caché ligada al historial visible e indicadores de conexión.
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos de forma independiente del programa de transmisión. El emisor que elijas captura y envía el audio; MetaDATA prepara archivos y, opcionalmente, audio codificado para integraciones compatibles.
 
 La interfaz utiliza controles de escritorio, colores del sistema y cuatro pantallas: **Inicio, Historial, Conexiones y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Funciona en segundo plano con bandeja, ocultar y restaurar.
+
+Novedades de esta versión: [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
 
 ## Instalar y actualizar en Windows
 
@@ -34,9 +36,9 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 
 ## Configurar la estación
 
-1. **Ajustes → Estación**: nombre, eslogan, web, descripción, logo y apariencia. Los mensajes sin música son solo visuales en MetaDATA y su reproductor.
+1. **Ajustes → Estación**: nombre, descripción, web, género, logo y apariencia. Eslogan y mensajes quedan en la sección opcional de personalización. Los mensajes sin música son solo visuales en MetaDATA y su reproductor.
 2. **Conexiones → RadioBOSS → Configurar**: activa su API HTTP en RadioBOSS, indica dirección/usuario y escribe la contraseña en la app. Pulsa **Probar conexión** y **Guardar**. Usa localhost para esta instalación.
-3. **Ajustes → Música**: agrega las carpetas de canciones. Excluye carpetas, términos y tipos de anuncios, promos y jingles. Sin carpetas aprobadas, RadioBOSS no publica canciones. No se deducen artista y título del nombre del archivo.
+3. **Ajustes → Reglas**: configura carpetas en la lista blanca y en la lista negra, con **Incluir subcarpetas** por regla. La lista negra tiene prioridad. Excluye también términos y tipos de anuncios, promos y jingles. Sin carpetas aprobadas, RadioBOSS no publica canciones. No se deducen artista y título del nombre del archivo.
 4. **Conexiones → Spotify**: consulta sus sesiones multimedia de Windows sin clave API ni OAuth. Empieza en observación; permite sus canciones en selección e historial cuando hayas comprobado el comportamiento. Windows no garantiza clasificar todos los anuncios. La app no concede derechos de retransmisión; consulta las condiciones de Spotify.
 5. **Conexiones → Now Playing** muestra TXT, XML y JSON: selecciona lo que admita tu emisor y copia su ruta. Ejemplo específico de RadioCaster: Settings → Metadata → **Read from XML file**, **Title Format** `{TRACK[CASTTITLE]}`. El XML normalmente está en:
 
@@ -47,9 +49,17 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
    El TXT contiene una primera línea en UTF-8. XML y JSON requieren configurar el lector correspondiente; no hay un esquema universal que acepten todos los emisores.
 6. Configura los destinos y contraseñas de transmisión en tu emisor. Para la integración de codificador externo, entra en **Ajustes → Codificador** y verifica el contrato PCM/STDIN/STDOUT que necesita ese programa. RadioCaster es una adaptación opcional; no es una dependencia del motor de metadatos.
 
-En Inicio selecciona Automático, Solo RadioBOSS o Solo Spotify. Si ambas reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
+En **Ajustes → Fuentes**, pulsa **Detectar reproductores** con las aplicaciones abiertas. Las nuevas sesiones de Windows se agregan desactivadas: marca **Consultar** y después **Publicar** si corresponde. Usa **Subir/Bajar** para ordenar la prioridad. La detección muestra sesiones disponibles, no un inventario de aplicaciones instaladas. VLC, Deezer, reproductores de Windows y otras aplicaciones solo funcionan si exponen una sesión multimedia con los datos necesarios. Varias sesiones simultáneas de una misma aplicación se rechazan cuando no hay una selección inequívoca. El tipo desconocido necesita autorización explícita; los vídeos no se admiten como música.
+
+En Inicio selecciona Automático o una fuente concreta. Si varias reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
 
 Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y publica el vaciado de datos musicales por las salidas activas. Sin bandeja, Ocultar minimiza y X sale. El autoarranque no está implementado; puedes añadir un acceso directo a `iniciar.bat` en la carpeta de inicio de Windows después de validar la instalación.
+
+## Receptor autohospedado
+
+**Ajustes → Publicación** permite enviar artista, título, álbum, otros campos disponibles y la portada juntos a tu servidor. La clave se configura en la app. El receptor publica rutas estables, confirma vigencia y vacía datos al caducar o recibir una pausa. Incluye servicio Python y configuración Docker Compose con almacenamiento persistente: [instalación y contrato de la API](docs/RECEPTOR.md). No requiere conectar directamente MetaDATA a un proveedor de streaming. La web futura consumirá estas rutas y no forma parte de este proyecto.
+
+El alcance actual incluye fuentes, reglas, Now Playing, encoders y publicación. El monitoreo de audio/silencios, los incidentes y las estadísticas de oyentes siguen pendientes; las peticiones al JSON no se cuentan como oyentes. El instalador completo con FFmpeg se prepara al finalizar la etapa de refinamiento.
 
 ## Pausas y carátulas
 
@@ -73,7 +83,7 @@ Por compatibilidad se siguen leyendo las variables de entorno de instalaciones a
 
 ## Historial y límites
 
-El historial registra fecha/hora, fuente, artista, título, álbum y año solo de canciones válidas. **Exportar CSV** exporta todo el historial, aunque la tabla muestre las canciones recientes según el límite elegido (200 inicialmente). Las últimas tres aparecen en Inicio. En Ajustes → Música puedes elegir cuántas mostrar y el espacio de su caché de portadas; esto no borra el historial SQLite de texto.
+El historial registra fecha/hora, fuente, artista, título, álbum y año solo de canciones válidas. **Exportar CSV** exporta todo el historial, aunque la tabla muestre las canciones recientes según el límite elegido (200 inicialmente). Las últimas tres aparecen en Inicio. En Ajustes → Reglas puedes elegir cuántas mostrar y el espacio de su caché de portadas; esto no borra el historial SQLite de texto.
 
 La selección se calcula con estado, prioridad, carpetas y exclusiones. No identifica infaliblemente la señal al aire después de la consola ni reconoce acústicamente anuncios. Una publicidad mal etiquetada en una carpeta musical puede pasar los filtros: corrige su clasificación y activa Pausar metadatos antes del bloque.
 

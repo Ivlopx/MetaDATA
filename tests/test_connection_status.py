@@ -18,14 +18,14 @@ class ConnectionStatusTests(unittest.TestCase):
         states = connection_states(Config(), [], [], [], local_exists=True)
         self.assertEqual(states['Now Playing'][0], 'warning')
         self.assertIn('sin comprobar', states['Now Playing'][1])
-        self.assertEqual(set(states), {'RadioBOSS', 'Spotify', 'Now Playing'})
+        self.assertEqual(set(states), {'RadioBOSS', 'Spotify', 'Now Playing', 'Receptor'})
         failed = connection_states(Config(), [], ['Error de salida local: prueba'], [], local_exists=True)
         self.assertEqual(failed['Now Playing'][0], 'error')
 
     def test_legacy_remote_settings_do_not_restore_removed_connections(self):
         config = Config(remote_monitor_enabled=True)
         record = dict(service='AzuraCast', online=True, error='', matches=True)
-        self.assertEqual(set(connection_states(config, [], [], [record])), {'RadioBOSS', 'Spotify', 'Now Playing'})
+        self.assertEqual(set(connection_states(config, [], [], [record])), {'RadioBOSS', 'Spotify', 'Now Playing', 'Receptor'})
 
     def test_demo_and_paused_metadata_do_not_claim_live_connections(self):
         config = Config(radioboss_enabled=True)

@@ -50,8 +50,15 @@ class Config:
     spotify_enabled: bool = True
     spotify_app_id_contains: str = "spotify"
     spotify_publish: bool = False
+    windows_sources: list[dict] = field(default_factory=list)
+    source_priority: list[str] = field(default_factory=list)
     music_folders: list[str] = field(default_factory=list)
     excluded_folders: list[str] = field(default_factory=list)
+    folder_rules: list[dict] = field(default_factory=list)
+    station_genre: str = ""
+    receiver_enabled: bool = False
+    receiver_url: str = ""
+    receiver_heartbeat_seconds: int = 10
     excluded_terms: list[str] = field(default_factory=lambda: [
         "anuncio", "publicidad", "commercial", "advertisement", "promo", "jingle", "spot"])
     excluded_types: list[str] = field(default_factory=lambda: [
@@ -99,6 +106,50 @@ class Config:
             raise ValueError("El intervalo debe estar entre 1 y 30 segundos")
         if self.priority not in ("radioboss", "spotify"):
             raise ValueError("Prioridad inválida")
+        if not 1 <= self.receiver_heartbeat_seconds <= 10:
+            raise ValueError('La confirmación al receptor debe ser cada 1–10 segundos.')
+        if self.receiver_url:
+            self._url(self.receiver_url)
+            url = urlsplit(self.receiver_url)
+            if url.scheme != 'https' and url.hostname not in ('127.0.0.1', 'localhost', '::1'):
+                raise ValueError('El receptor requiere HTTPS, salvo en pruebas locales.')
+        if self.receiver_enabled and not self.receiver_url:
+            raise ValueError('Completa la dirección del receptor.')
+        if self.receiver_enabled and self.poll_seconds > self.receiver_heartbeat_seconds:
+            raise ValueError('La consulta de fuentes debe ser igual o más frecuente que la confirmación al receptor.')
+        from .source_catalog import windows_source_id
+        source_ids, app_ids = set(), set()
+        if len(self.windows_sources) > 32:
+            raise ValueError('Se admiten hasta 32 fuentes de Windows.')
+        expected = {'id', 'name', 'app_id', 'enabled', 'publish', 'allow_unknown'}
+        for source in self.windows_sources:
+            if not isinstance(source, dict) or set(source) != expected:
+                raise ValueError('Fuente multimedia de Windows inválida')
+            if any(not isinstance(source[key], str) or not source[key].strip() or len(source[key]) > 512
+                   or any(ord(c) < 32 for c in source[key]) for key in ('id', 'name', 'app_id')):
+                raise ValueError('Nombre o identificador multimedia inválido')
+            if source['id'] != windows_source_id(source['app_id']):
+                raise ValueError('El identificador de la fuente no corresponde a su aplicación')
+            if source['id'] in source_ids or source['app_id'].casefold() in app_ids:
+                raise ValueError('Hay fuentes multimedia duplicadas')
+            if self.spotify_app_id_contains.casefold() in source['app_id'].casefold():
+                raise ValueError('Configura Spotify desde su fuente existente.')
+            if any(type(source[key]) is not bool for key in ('enabled', 'publish', 'allow_unknown')):
+                raise ValueError('Los permisos de una fuente deben ser booleanos')
+            source_ids.add(source['id'])
+            app_ids.add(source['app_id'].casefold())
+        if any(not isinstance(key, str) or key not in source_ids | {'radioboss', 'spotify'} for key in self.source_priority):
+            raise ValueError('La prioridad contiene una fuente desconocida')
+        if len(set(self.source_priority)) != len(self.source_priority):
+            raise ValueError('La prioridad contiene fuentes repetidas')
+        if len(self.folder_rules) > 256:
+            raise ValueError('Se admiten hasta 256 reglas de carpetas.')
+        for rule in self.folder_rules:
+            if (not isinstance(rule, dict) or set(rule) != {'path', 'action', 'recursive'}
+                    or not isinstance(rule['path'], str) or not rule['path'].strip()
+                    or len(rule['path']) > 4096 or rule['action'] not in ('allow', 'block')
+                    or type(rule['recursive']) is not bool):
+                raise ValueError('Regla de carpeta inválida')
         for key, low, high in (("remote_poll_seconds", 5, 300), ("local_server_port", 1024, 65535), ("stale_seconds", 15, 300)):
             if not low <= getattr(self, key) <= high:
                 raise ValueError(f"{key}: valor permitido entre {low} y {high}")

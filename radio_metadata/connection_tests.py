@@ -19,6 +19,19 @@ class OverlayCredentials:
 
 async def check_connection(name, config, credentials, directory):
     try:
+        if name == 'Receptor':
+            from .publication import publication_key
+            def check_receiver():
+                token = credentials.get(publication_key(config))
+                if not config.receiver_url or not token:
+                    return False, 'Completa la dirección y la clave de publicación.'
+                with httpx.Client(timeout=4, follow_redirects=False, trust_env=False) as client:
+                    response = client.get(config.receiver_url.rstrip('/') + '/api/v1/check', headers={'Authorization': 'Bearer ' + token})
+                    response.raise_for_status()
+                    if len(response.content) > 4096 or response.json() != {'service': 'metadata-receiver', 'authenticated': True}:
+                        return False, 'La dirección respondió, pero no confirmó un receptor de MetaDATA.'
+                return True, 'El receptor reconoce la clave. No se publicaron datos en esta prueba.'
+            return await asyncio.to_thread(check_receiver)
         if name in ('Codificador Ogg', 'Codificador'):
             from .ogg_encoder import check_ffmpeg, EncoderError
             try:
