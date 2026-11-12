@@ -56,8 +56,7 @@ class Config:
     excluded_folders: list[str] = field(default_factory=list)
     folder_rules: list[dict] = field(default_factory=list)
     station_genre: str = ""
-    title_format: str = "{title} - {artist}"
-    broadcast_title_format: str = "{artist} - {title}"
+    title_format: str = "{artist} - {title}"
     audio_monitor_enabled: bool = False
     statistics_enabled: bool = False
     statistics_url: str = ""
@@ -121,7 +120,6 @@ class Config:
             raise ValueError("Prioridad inválida")
         from .title_format import validate_format
         validate_format(self.title_format)
-        validate_format(self.broadcast_title_format)
         for key, low, high in (('monitor_interval_seconds', 15, 300), ('monitor_sample_seconds', 3, 10),
                                ('monitor_silence_seconds', 1, 10), ('monitor_threshold_db', -90, -10),
                                ('monitor_confirmations', 1, 5), ('monitor_retention_days', 1, 365)):
@@ -257,18 +255,26 @@ class ConfigStore:
             config = Config()
             self.save(config)
             return config
-        values = json.loads(self.path.read_text(encoding="utf-8"))
+        original = self.path.read_bytes()
+        values = json.loads(original)
         if not isinstance(values, dict):
             raise ValueError("La configuración debe ser un objeto JSON")
+        merge_title = 'broadcast_title_format' in values
+        if merge_title:
+            values['title_format'] = values.pop('broadcast_title_format')
         old_version = values.get("version", 1)
         migrate = old_version in (1, 2, 3)
         if migrate:
-            original = self.path.read_bytes()
             values["version"] = 4
         config = Config(**values)
         config.validate()
         if migrate:
             backup = self.directory / f"config.v{old_version}.backup.json"
+            if not backup.exists():
+                atomic_write(backup, original)
+            self.save(config)
+        if merge_title:
+            backup = self.directory / 'config.split-title.backup.json'
             if not backup.exists():
                 atomic_write(backup, original)
             self.save(config)

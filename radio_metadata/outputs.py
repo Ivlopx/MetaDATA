@@ -59,11 +59,10 @@ class LocalOutput:
                 pass
         logo_file = self._image(logo)
         song_file = self._image(track.artwork) if track else ''
-        from .title_format import format_title
         state = {
             'schema_version': 3, 'updated_at': datetime.now(timezone.utc).isoformat(),
             'stale_seconds': config.stale_seconds,
-            'text': format_title(track, config.broadcast_title_format) if track else '',
+            'text': clean(decision.text) if track else '',
             'display_text': clean(decision.text) if track else '',
             'display_message': '' if track else clean(decision.text),
             'source': decision.source, 'is_music': track is not None, 'conflict': decision.conflict,

@@ -32,14 +32,14 @@ class TitleFormatTests(unittest.TestCase):
         self.song = Snapshot('spotify', True, 'Artista', 'Canción', kind='music', album='Álbum')
 
     def test_order_template_and_structured_fields_remain_independent(self):
-        self.assertEqual(resolve([self.song], self.config).text, 'Canción - Artista')
+        self.assertEqual(resolve([self.song], self.config).text, 'Artista - Canción')
         self.config.title_format = '{artist} - {title}'
         self.assertEqual(resolve([self.song], self.config).text, 'Artista - Canción')
         self.config.title_format = '{title} | {artist} | {album}'
         with tempfile.TemporaryDirectory() as tmp:
             state = LocalOutput(Path(tmp)).publish(resolve([self.song], self.config), self.config)
         self.assertEqual(state['display_text'], 'Canción | Artista | Álbum')
-        self.assertEqual(state['text'], 'Artista - Canción')
+        self.assertEqual(state['text'], 'Canción | Artista | Álbum')
         self.assertEqual((state['artist'], state['title'], state['album']), ('Artista', 'Canción', 'Álbum'))
         self.assertEqual(resolve([replace(self.song, title='Publicidad')], self.config).song, None)
 
@@ -188,36 +188,40 @@ class MonitorStatisticsTests(unittest.TestCase):
             finally:
                 engine.close()
 
-class BroadcastTitleCompatibilityTests(unittest.TestCase):
-    def test_visual_order_never_changes_default_emitter_parser_fields(self):
+class UnifiedTitleFormatTests(unittest.TestCase):
+    def test_single_format_controls_all_combined_outputs_without_changing_named_fields(self):
         import xml.etree.ElementTree as ET
         song = Snapshot('spotify', True, 'Artist example', 'Track example', kind='music')
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for visual in ('{title} - {artist}', '{title}', '{title} | {artist}'):
-                config = Config(spotify_publish=True, title_format=visual)
-                state = LocalOutput(root).publish(resolve([song], config), config)
+            for selected in ('{artist} - {title}', '{title} - {artist}', '{title}', '{title} | {artist}'):
+                config = Config(spotify_publish=True, title_format=selected)
+                decision = resolve([song], config)
+                state = LocalOutput(root).publish(decision, config)
                 track = ET.fromstring((root / 'nowplaying.xml').read_bytes()).find('TRACK')
-                parsed_artist, parsed_title = track.get('CASTTITLE').split(' - ', 1)
-                self.assertEqual((parsed_artist, parsed_title), (song.artist, song.title))
-                self.assertEqual(track.get('DISPLAYTITLE'), state['display_text'])
+                self.assertEqual(track.get('CASTTITLE'), decision.text)
+                self.assertEqual(track.get('DISPLAYTITLE'), decision.text)
+                self.assertEqual(state['text'], decision.text)
+                self.assertEqual(state['display_text'], decision.text)
                 self.assertEqual(track.get('ARTIST'), song.artist)
                 self.assertEqual(track.get('TITLE'), song.title)
-                self.assertEqual((root / 'nowplaying.txt').read_text().strip(), 'Artist example - Track example')
+                self.assertEqual((root / 'nowplaying.txt').read_text().strip(), decision.text)
                 state = LocalOutput(root).publish(resolve([], config), config)
                 track = ET.fromstring((root / 'nowplaying.xml').read_bytes()).find('TRACK')
                 self.assertEqual((track.get('CASTTITLE'), track.get('DISPLAYTITLE'), state['display_text']), ('', '', ''))
 
-    def test_old_configuration_gets_compatible_emitter_default_without_losing_visual_choice(self):
+    def test_split_configuration_merges_last_emitter_format_with_backup(self):
         from dataclasses import asdict
         from radio_metadata.config import ConfigStore
         with tempfile.TemporaryDirectory() as tmp:
             store = ConfigStore(Path(tmp))
             values = asdict(Config(title_format='{title} | {artist}'))
-            values.pop('broadcast_title_format')
-            store.path.write_text(json.dumps(values))
+            values['broadcast_title_format'] = '{artist} - {title}'
+            original = json.dumps(values)
+            store.path.write_text(original)
             loaded = store.load()
-            self.assertEqual(loaded.title_format, '{title} | {artist}')
-            self.assertEqual(loaded.broadcast_title_format, '{artist} - {title}')
-            with self.assertRaises(ValueError):
-                replace(loaded, broadcast_title_format='{title.__class__}').validate()
+            self.assertEqual(loaded.title_format, '{artist} - {title}')
+            self.assertNotIn('broadcast_title_format', json.loads(store.path.read_text()))
+            self.assertEqual((Path(tmp) / 'config.split-title.backup.json').read_text(), original)
+            self.assertEqual(store.load().title_format, loaded.title_format)
+            self.assertEqual(Config().title_format, '{artist} - {title}')

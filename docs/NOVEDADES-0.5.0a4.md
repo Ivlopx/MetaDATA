@@ -1,5 +1,7 @@
 # MetaDATA 0.5.0a4: artista y título al emitir
 
+La separación descrita aquí se sustituyó por un selector único en [0.5.0a5](NOVEDADES-0.5.0a5.md), conservando Artista - Canción como valor predeterminado.
+
 Se corrige una incompatibilidad: cambiar el texto combinado a Canción - Artista también cambiaba lo que el emisor publicaba como título ICY. Un servidor que interpreta ese texto como Artista - Canción puede intercambiar los campos, aunque ARTIST y TITLE del XML local sean correctos. Leer únicamente CASTTITLE no transporta al servidor los otros atributos del XML.
 
 ## Dos formatos independientes

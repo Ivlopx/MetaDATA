@@ -41,7 +41,7 @@ La prueba local con FFmpeg comprueba recepción HTTP, audio normal y silencio. P
 
 1. Actualiza la app y elige tu `ffmpeg.exe`.
 2. Comprueba la fuente de música en **Ajustes → Fuentes** con cada reproductor abierto.
-3. En **Now Playing**, conserva **Artista - Canción** en **Texto para el emisor**. Cambiar **Presentación en MetaDATA** no debe invertir TXT ni XML/CASTTITLE; los campos separados de artista y título deben mantenerse correctos.
+3. En **Now Playing**, elige **Artista - Canción** en **Formato del título combinado** y comprueba que coincidan TXT, XML/CASTTITLE y JSON/text. Los campos separados de artista y título deben mantenerse correctos.
 4. Activa el monitoreo con una dirección de prueba. Comprueba recepción y las fechas de consulta.
 5. Para probar silencio o desconexiones, usa un stream de prueba separado. No detengas una emisión en vivo para ensayar.
 6. Configura la API de estadísticas y compara el conteo con su panel, teniendo en cuenta el intervalo y la propia conexión de prueba.

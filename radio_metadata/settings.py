@@ -266,19 +266,18 @@ class SettingsDialog(QDialog):
             choose_preset()
             preview_format()
             return combo
-        self.title_presets = title_selector('title_format', 'Presentación en MetaDATA')
-        self.broadcast_presets = title_selector('broadcast_title_format', 'Texto para el emisor')
+        self.title_presets = title_selector('title_format', 'Formato del título combinado')
         self.broadcast_warning = QLabel()
         self.broadcast_warning.setTextFormat(Qt.TextFormat.PlainText)
         self.broadcast_warning.setWordWrap(True)
         def broadcast_warning():
-            compatible = self.fields['broadcast_title_format'].text() == '{artist} - {title}'
+            compatible = self.fields['title_format'].text() == '{artist} - {title}'
             self.broadcast_warning.setText('Este formato puede invertir o impedir la identificación de artista y canción en servidores que separan el texto por guion. Para compatibilidad usa Artista - Canción.' if not compatible else '')
             self.broadcast_warning.setVisible(not compatible)
-        self.fields['broadcast_title_format'].textChanged.connect(broadcast_warning)
+        self.fields['title_format'].textChanged.connect(broadcast_warning)
         broadcast_warning()
         caster.addRow(self.broadcast_warning)
-        note(caster, 'El emisor recibe TXT y XML/CASTTITLE; por defecto se usa Artista - Canción para que el servidor identifique los campos correctamente. El formato de presentación se conserva por separado. Los campos ARTIST, TITLE y ALBUM no cambian de significado.')
+        note(caster, 'Un único formato para el texto combinado de todas las salidas. Por defecto: Artista - Canción. Los campos ARTIST, TITLE y ALBUM mantienen su significado; cada reproductor decide cómo mostrarlos.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
         help_button = QPushButton('Cómo conectarlo a mi emisor')
         help_button.setMaximumWidth(240)
@@ -288,7 +287,7 @@ class SettingsDialog(QDialog):
         help_form = QFormLayout(help_widget)
         help_form.setContentsMargins(0, 4, 0, 4)
         note(help_form, 'Selecciona en tu emisor el archivo y formato que admita. TXT entrega el título combinado; XML y JSON requieren un lector compatible. Las conexiones de audio se configuran en el emisor.')
-        note(help_form, 'RadioCaster: Read from XML file, con Title Format {TRACK[CASTTITLE]}. Puedes mantener esa plantilla. Su contenido usa Texto para el emisor; Presentación en MetaDATA no altera lo que se transmite. El XML no transporta imágenes por sí solo.')
+        note(help_form, 'RadioCaster: Read from XML file, con Title Format {TRACK[CASTTITLE]}. Puedes mantener esa plantilla. Su contenido usa el formato del título combinado que elijas aquí. El XML no transporta imágenes por sí solo.')
         help_widget.hide()
         help_button.toggled.connect(help_widget.setVisible)
         caster.addRow(help_widget)
