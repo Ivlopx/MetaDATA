@@ -5,11 +5,10 @@ from dataclasses import replace
 
 from .credentials import WindowsCredentials, MemoryCredentials
 from .model import Snapshot, resolve
-from .outputs import LocalOutput, WebDavOutput
+from .outputs import LocalOutput
 from .sources import make_sources
 from .storage import History
 from .publication import ReceiverOutput
-from .monitoring import BroadcastMonitor, MonitorHistory
 
 log = logging.getLogger(__name__)
 
@@ -27,8 +26,6 @@ class Engine:
         self.server_error = ''
         self.remote_records = []
         self.monitor = None
-        self.monitor_history = MonitorHistory(directory / ('demo-monitor.sqlite3' if demo else 'monitor.sqlite3'))
-        self.force_monitor = False
         self.configure(config)
 
     def configure(self, config):
@@ -38,22 +35,14 @@ class Engine:
         # Legacy destination settings must never restart retired direct writers.
         self.outputs = []
         self.receiver = ReceiverOutput(config, self.local.directory, self.credentials) if config.receiver_enabled and not self.demo else None
-        self.webdav = WebDavOutput(config, self.local.directory, self.credentials) if config.webdav_enabled and not self.demo else None
-        if self.monitor:
-            self.monitor.close()
-        self.monitor = BroadcastMonitor(config, self.credentials) if (config.audio_monitor_enabled or config.statistics_enabled) and not self.demo else None
-        self.monitor_history.configure_scope(config)
+        # Retired audio/monitoring settings are tolerated but never activate services.
+        self.webdav = None
+        self.monitor = None
         self.remote_records = []
         if self.server:
             self.server.close()
             self.server = None
         self.server_error = ''
-        if config.local_server_enabled:
-            try:
-                from .webserver import LocalServer
-                self.server = LocalServer(self.local.directory, config.local_server_port)
-            except OSError:
-                self.server_error = 'No se pudo abrir la vista local; revisa si el puerto está ocupado'
 
     async def publish(self, decision):
         statuses, state = [], None
@@ -62,12 +51,10 @@ class Engine:
         except Exception as error:
             log.error('Salida local: %s', type(error).__name__)
             statuses.append('Error de salida local: el emisor podría conservar el título anterior')
-        if self.webdav:
-            statuses.append(await asyncio.to_thread(self.webdav.send, decision, state))
         if self.receiver:
             statuses.append(await asyncio.to_thread(self.receiver.send, decision, state))
         if state is not None:
-            state['artwork_url'] = self.webdav.artwork_url if self.webdav else ''
+            state['artwork_url'] = ''
         if self.server:
             statuses.append('Vista y API local: ' + self.server.url)
         if self.server_error:
@@ -99,19 +86,6 @@ class Engine:
             log.error('Historial: %s', type(error).__name__)
             errors.append('No se pudo guardar el historial')
         statuses = await self.publish(decision)
-        monitor_rows = []
-        try:
-            if self.monitor:
-                monitor_rows, completed = self.monitor.poll(force=self.force_monitor)
-                if completed:
-                    self.monitor_history.record(completed, self.config)
-            self.remote_records = dict(self.monitor_history.view(), records=monitor_rows,
-                                       demo=self.demo, audio_enabled=self.config.audio_monitor_enabled,
-                                       statistics_enabled=self.config.statistics_enabled)
-        except Exception as error:
-            log.error('Monitoreo: %s', type(error).__name__)
-            statuses.append('No se pudieron actualizar los datos de monitoreo.')
-        self.force_monitor = False
         if self.last_state != (decision.source, decision.reason, decision.conflict):
             log.info('Selección: %s; %s; conflicto=%s', decision.source, decision.reason, decision.conflict)
             self.last_state = decision.source, decision.reason, decision.conflict
@@ -122,9 +96,6 @@ class Engine:
         return decision, snapshots, errors + statuses, rows
 
     def close(self):
-        if self.monitor:
-            self.monitor.close()
-        self.monitor_history.close()
         if self.server:
             self.server.close()
             self.server = None

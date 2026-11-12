@@ -75,16 +75,12 @@ class LocalOutput:
             'artwork_origin': (track.artwork_origin or 'source') if song_file else ('station_logo' if track and logo_file else ''),
             'station': config.station_name, 'slogan': config.slogan, 'description': config.description,
             'station_genre': config.station_genre,
-            'website': config.website, 'idle_message': config.idle_message, 'stream_url': config.stream_url,
+            'website': config.website, 'idle_message': clean(config.description),
         }
         # No input filename, credentials, or observed/excluded tracks in public exports.
         atomic_write(self.directory / 'nowplaying.txt', (state['text'] + '\n').encode('utf-8'))
         atomic_write(self.directory / 'nowplaying.xml', xml_state(state))
         atomic_write(self.directory / 'nowplaying.json', json.dumps(state, ensure_ascii=False, indent=2).encode('utf-8'))
-        from .player import PLAYER_HTML
-        player = self.directory / 'player.html'
-        if not player.exists() or player.read_bytes() != PLAYER_HTML.encode('utf-8'):
-            atomic_write(player, PLAYER_HTML.encode('utf-8'))
         prune_images(self.directory, {state['artwork_file'], logo_file}, retained_images,
                      config.history_visible_limit + 2, config.cover_cache_mb * 1024 * 1024)
         return state

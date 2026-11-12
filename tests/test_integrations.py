@@ -350,3 +350,51 @@ class AdditionalBehaviorTests(unittest.TestCase):
         self.assertEqual((track.duration_ms, track.position_ms), (180000, 10000))
         self.assertEqual(track.year, '')
         self.assertEqual(track.isrc, '')
+
+class FocusedApplicationTests(unittest.TestCase):
+    def test_removed_services_never_start_from_legacy_enabled_profile(self):
+        from radio_metadata.credentials import MemoryCredentials
+        config = Config(radioboss_enabled=False, spotify_enabled=False,
+                        audio_monitor_enabled=True, stream_url='https://audio.example/live.aac',
+                        statistics_enabled=True, statistics_url='https://stats.example/current',
+                        local_server_enabled=True, webdav_enabled=True,
+                        webdav_upload_url='https://upload.example/current', webdav_public_url='https://public.example/current')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch('httpx.Client', side_effect=AssertionError('No retired service may connect')), \
+                 patch('radio_metadata.monitoring.BroadcastMonitor') as monitor, \
+                 patch('radio_metadata.webserver.LocalServer') as server, \
+                 patch('radio_metadata.outputs.WebDavOutput') as webdav:
+                engine = Engine(config, root, credentials=MemoryCredentials())
+                try:
+                    asyncio.run(engine.tick())
+                    monitor.assert_not_called(); server.assert_not_called(); webdav.assert_not_called()
+                    self.assertIsNone(engine.monitor)
+                    self.assertIsNone(engine.server)
+                    self.assertIsNone(engine.webdav)
+                    self.assertFalse((root / 'monitor.sqlite3').exists())
+                    self.assertFalse((root / 'output/player.html').exists())
+                    state = json.loads((root / 'output/nowplaying.json').read_text())
+                    self.assertNotIn('stream_url', state)
+                finally:
+                    engine.close()
+
+    def test_description_is_visual_for_idle_ads_and_operator_pause_never_song_metadata(self):
+        from radio_metadata.model import Snapshot
+        config = Config(description='Descripción de muestra', spotify_publish=True,
+                        idle_message='OLD_IDLE_MESSAGE', break_message='OLD_AD_MESSAGE')
+        ad = Snapshot('spotify', True, 'Artist', 'Publicidad', kind='music')
+        decisions = [resolve([], config), resolve([ad], config), resolve([], config, 'station')]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for decision in decisions:
+                self.assertEqual(decision.text, config.description)
+                self.assertIsNone(decision.song)
+                state = LocalOutput(root).publish(decision, config)
+                self.assertEqual(state['display_message'], config.description)
+                self.assertEqual(state['title'], '')
+                self.assertEqual(state['artist'], '')
+                self.assertEqual(state['text'], '')
+                self.assertEqual((root / 'nowplaying.txt').read_text().strip(), '')
+                self.assertNotIn(config.description, (root / 'nowplaying.xml').read_text())
+                self.assertNotIn('OLD_', (root / 'nowplaying.json').read_text())

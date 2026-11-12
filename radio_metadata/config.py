@@ -38,8 +38,8 @@ class Config:
     slogan: str = "Tu música, tu compañía"
     description: str = ""
     website: str = ""
-    idle_message: str = "Mi estación • Tu música, tu compañía"
-    break_message: str = "Mi estación • En un momento, más música"
+    idle_message: str = ""  # Retired; accepted for existing profiles only.
+    break_message: str = ""
     logo_path: str = ""
     poll_seconds: int = 2
     priority: str = "radioboss"
@@ -210,7 +210,7 @@ class Config:
             value = getattr(self, key)
             if not isinstance(value, list) or not all(isinstance(x, str) and x.strip() for x in value):
                 raise ValueError(f"{key}: usa una lista de textos no vacíos")
-        for key in ("station_name", "idle_message", "break_message"):
+        for key in ("station_name",):
             if not getattr(self, key).strip() or any(ord(c) < 32 for c in getattr(self, key)):
                 raise ValueError(f"{key}: escribe una sola línea no vacía")
         self._url(self.radioboss_url)

@@ -91,8 +91,9 @@ def valid_music(track, config):
 
 
 def resolve(snapshots, config, mode="auto"):
+    placeholder = clean(config.description) or 'Sin reproducción'
     if mode == "station":
-        return Decision(config.break_message, "estación", "Modo de pausa activado")
+        return Decision(placeholder, "estación", "Modo de pausa activado")
     candidates = [t for t in snapshots if t.playing and not t.error]
     conflict = len(candidates) > 1
     if mode != "auto":
@@ -102,10 +103,10 @@ def resolve(snapshots, config, mode="auto"):
         by_source = {track.source: track for track in candidates}
         chosen = next((by_source[key] for key in source_order(config) if key in by_source), None)
     if chosen is None:
-        return Decision(config.idle_message, "estación", "Sin reproducción válida o fuente no disponible", conflict=conflict)
+        return Decision(placeholder, "estación", "Sin reproducción válida o fuente no disponible", conflict=conflict)
     # Resolve source BEFORE filtering. An ad in the selected source must never reveal a lower-priority song.
     if not valid_music(chosen, config):
-        return Decision(config.break_message, chosen.source, "Contenido excluido, sin clasificar o solo observación", conflict=conflict)
+        return Decision(placeholder, chosen.source, "Contenido excluido, sin clasificar o solo observación", conflict=conflict)
     from .title_format import format_title
     return Decision(format_title(chosen, config.title_format), chosen.source,
                     "Prioridad configurada; comprobar consola" if conflict else "Reproducción detectada; comprobar consola",

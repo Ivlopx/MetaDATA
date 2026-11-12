@@ -38,13 +38,9 @@ La opción **Usar variables de RadioCaster en el comando** adapta la línea a `{
 
 AAC/MP3 directos no incluyen portada dinámica. La opción HLS local con ID3/APIC se explica, junto con sus límites y validación pendiente, en [la guía AAC/HLS](PRUEBA-AAC-WINDOWS.md). Ogg conserva la prueba de portadas para receptores compatibles.
 
-## Vista local y alojamiento de imágenes
+## Portadas y publicación
 
-En Ajustes → Carátulas se configura la URL del audio del reproductor propio y el servicio local de solo lectura. En el puerto predeterminado, `http://127.0.0.1:12882/player.html` muestra el reproductor y `/nowplaying.json` los datos. No es un servicio público: solo escucha en esa computadora.
-
-El alojamiento WebDAV opcional publica imágenes y JSON en un servidor HTTPS ya preparado. Es independiente del proveedor de radio; no actualiza automáticamente la carátula del reproductor de AzuraCast ni publica segmentos HLS. No es necesario configurarlo para generar archivos locales o codificar audio.
-
-Las imágenes viven en `covers`; la caché local se limita por historial visible y espacio configurados. Los límites no eliminan archivos remotos.
+Las portadas siguen obteniéndose de las fuentes y guardándose en covers. La caché local se limita por historial visible y espacio configurados. Publicación permite enviar los metadatos y la imagen juntos al receptor autohospedado; no requiere una URL de audio en MetaDATA.
 
 ## Configuraciones anteriores
 
@@ -52,8 +48,6 @@ Se retiraron las conexiones AzuraCast y Zeno.fm de la pantalla Conexiones, la p�
 
 Los conectores e investigaciones antiguos pueden seguir presentes como código/documentación de referencia, pero no forman parte del flujo activo de la app. Para poner la estación al aire se configura el destino en el emisor elegido.
 
-## Monitoreo de solo lectura
-
-La pestaña Monitoreo añade comprobaciones de audio y estadísticas opcionales del servidor. No utiliza contraseñas de emisión ni publica datos al servidor. Puede usar un token de lectura configurado desde la app. Consulta la [guía de monitoreo](MONITOREO.md).
-
 Un único formato controla el título combinado de todas las salidas. XML/DISPLAYTITLE y JSON/display_text son alias del mismo texto. Para receptores que interpretan ese texto se recomienda Artista - Canción; cambiar su orden puede invertir los campos. Consulta la [unificación de formatos](NOVEDADES-0.5.0a5.md).
+
+El monitoreo, las estadísticas y el reproductor local se retiraron de MetaDATA. No se requiere un enlace de audio. Las portadas de las canciones se conservan y se pueden enviar con los metadatos mediante Publicación.

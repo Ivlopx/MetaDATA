@@ -4,8 +4,8 @@ from pathlib import Path
 import queue
 import threading
 
-from PySide6.QtCore import Qt, QThread, Signal, QUrl
-from PySide6.QtGui import QCloseEvent, QPixmap, QDesktopServices, QShortcut, QKeySequence
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QCloseEvent, QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QLabel,
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton,
@@ -68,8 +68,6 @@ class Worker(QThread):
                         engine.mode = value
                     elif name == "scenario":
                         engine.scenario = value
-                    elif name == 'probe':
-                        engine.force_monitor = True
                 self.updated.emit(loop.run_until_complete(engine.tick()) + (engine.remote_records,))
                 self.wake.wait(engine.config.poll_seconds)
         except Exception as error:
@@ -128,7 +126,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(heading)
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
-        for index in range(5):
+        for index in range(4):
             shortcut = QShortcut(QKeySequence(f'Ctrl+{index + 1}'), self)
             shortcut.activated.connect(lambda selected=index: self.tabs.setCurrentIndex(selected))
         preferences = QShortcut(QKeySequence('Ctrl+,'), self)
@@ -158,6 +156,11 @@ class MainWindow(QMainWindow):
         self.cover.setFrameShape(QLabel.Shape.StyledPanel)
         row.addWidget(self.cover)
         text = QVBoxLayout()
+        text.setSpacing(4)
+        text.setAlignment(Qt.AlignmentFlag.AlignTop)
+        song_details = QVBoxLayout()
+        song_details.setSpacing(2)
+        song_details.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.title = QLabel('Iniciando…')
         font = self.title.font()
         font.setPointSize(font.pointSize() + 5)
@@ -170,7 +173,12 @@ class MainWindow(QMainWindow):
         self.reason.setToolTip('La selección se basa en reproducción y prioridad. Comprueba qué audio está al aire en tu consola.')
         for widget in (self.title, self.artist, self.album, self.active, self.reason):
             widget.setTextFormat(Qt.TextFormat.PlainText)
-            text.addWidget(widget)
+        for widget in (self.title, self.artist, self.album):
+            song_details.addWidget(widget)
+        text.addLayout(song_details)
+        text.addSpacing(8)
+        text.addWidget(self.active)
+        text.addWidget(self.reason)
         row.addLayout(text, 1)
         playback_layout.addLayout(row)
         controls = QHBoxLayout()
@@ -184,15 +192,8 @@ class MainWindow(QMainWindow):
         self.station_button = QPushButton('Pausar metadatos')
         self.station_button.clicked.connect(self.toggle_station)
         controls.addWidget(self.station_button)
-        preview = QPushButton('Abrir reproductor')
-        preview.clicked.connect(self.open_preview)
-        controls.addWidget(preview)
         controls.addStretch()
         playback_layout.addLayout(controls)
-        self.monitor_summary = QLabel('')
-        self.monitor_summary.setWordWrap(True)
-        self.monitor_summary.setTextFormat(Qt.TextFormat.PlainText)
-        home.addWidget(self.monitor_summary)
         self.mode.setToolTip('Selección por reproducción y prioridad; verifica el audio en la consola.')
         if demo:
             self.scenarios = QComboBox()
@@ -254,14 +255,8 @@ class MainWindow(QMainWindow):
         details.toggled.connect(lambda visible: details.setText('Ocultar detalles' if visible else 'Mostrar detalles'))
         connections.addWidget(self.diagnostics, 1)
 
-        from .monitor_panel import MonitorPanel
-        monitor_page = page('Monitoreo')
-        self.monitor_panel = MonitorPanel()
-        monitor_page.addWidget(self.monitor_panel)
-        self.monitor_panel.check_button.clicked.connect(lambda: self.worker.command('probe', None))
-        self.monitor_panel.settings_button.clicked.connect(lambda: self.settings('Monitoreo'))
-
         self.settings_page = page('Ajustes')
+        self.settings_tab = self.tabs.count() - 1
         self.settings_page.setContentsMargins(0, 0, 0, 0)
         self.settings_form = None
         self.output_label = QLabel('')
@@ -384,7 +379,9 @@ class MainWindow(QMainWindow):
     def update_state(self, payload):
         decision, snapshots, statuses, rows, *extra = payload
         self.title.setText(decision.song.title if decision.song else decision.text)
-        self.artist.setText(decision.song.artist if decision.song else self.config.slogan)
+        self.artist.setText(decision.song.artist if decision.song else '')
+        self.artist.setVisible(decision.song is not None)
+        self.album.setVisible(decision.song is not None)
         if decision.song:
             track = decision.song
             details = [track.album, track.year, track.genre]
@@ -416,10 +413,6 @@ class MainWindow(QMainWindow):
             lines.append("Datos sintéticos. No se consulta ni publica a servidores; salida demo separada.")
         self.diagnostics.setPlainText("\n".join(lines))
         self.history_rows = rows
-        if extra and isinstance(extra[0], dict):
-            self.monitor_panel.update_data(extra[0])
-            problems = [row['message'] for row in extra[0].get('records', []) if row['state'] != 'ok']
-            self.monitor_summary.setText('Monitoreo: ' + ' · '.join(problems) if problems else '')
         self.recent.setRowCount(min(3, len(rows)))
         self.recent_empty.setVisible(not rows)
         self.recent.setVisible(bool(rows))
@@ -446,10 +439,6 @@ class MainWindow(QMainWindow):
 
     def report_failure(self, message):
         self.output_label.setText(message)
-        self.monitor_summary.setText('Monitoreo detenido · datos sin actualizar')
-        for channel in self.monitor_panel.labels:
-            self.monitor_panel.labels[channel].setText('Administrador detenido · estado sin actualizar')
-            self.monitor_panel.dots[channel].setPixmap(status_pixmap('unknown'))
         for name, dot in self.connection_dots.items():
             state = 'error' if name == 'Now Playing' else 'unknown'
             dot.setPixmap(status_pixmap(state))
@@ -457,7 +446,7 @@ class MainWindow(QMainWindow):
             self.connection_labels[name].setText('Administrador detenido · estado sin actualizar')
 
     def settings(self, page='Estación'):
-        self.tabs.setCurrentIndex(4)
+        self.tabs.setCurrentIndex(self.settings_tab)
         page = {'Música': 'Reglas', 'Spotify': 'Fuentes'}.get(page, page)
         if page in self.settings_form.page_names:
             self.settings_form.navigation.setCurrentRow(self.settings_form.page_names.index(page))
@@ -493,12 +482,6 @@ class MainWindow(QMainWindow):
         self.rebuild_settings()
         self.statusBar().showMessage('Cambios descartados', 5000)
 
-    def open_preview(self):
-        if not self.config.local_server_enabled:
-            QMessageBox.information(self, "Vista de carátulas", "Activa la vista local en Ajustes → Carátulas.")
-            return
-        QDesktopServices.openUrl(QUrl(f"http://127.0.0.1:{self.config.local_server_port}/player.html"))
-
     def restore(self):
         self.showNormal()
         self.raise_()
@@ -514,7 +497,7 @@ class MainWindow(QMainWindow):
         if ((self.exiting or not QSystemTrayIcon.isSystemTrayAvailable()) and self.settings_form
                 and any(thread.isRunning() for thread in self.settings_form.findChildren(QThread))):
             self.settings_form.message.setText('Espera a que termine la comprobación antes de salir.')
-            self.tabs.setCurrentIndex(4)
+            self.tabs.setCurrentIndex(self.settings_tab)
             event.ignore()
             return
         if not self.exiting and QSystemTrayIcon.isSystemTrayAvailable():

@@ -1,4 +1,4 @@
-# MetaDATA · copia de prueba 0.5.0a5
+# MetaDATA · copia de prueba 0.5.0a6
 
 **Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
@@ -6,9 +6,9 @@ Se mantiene el perfil de datos `RadioMetadataManager-OggPrueba` para conservar l
 
 Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Administra metadatos de forma independiente del programa de transmisión. El emisor que elijas captura y envía el audio; MetaDATA prepara archivos y, opcionalmente, audio codificado para integraciones compatibles.
 
-La interfaz utiliza controles de escritorio, colores del sistema y cinco pantallas: **Inicio, Historial, Conexiones, Monitoreo y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Ajustes contiene el formulario directamente; los accesos desde Conexiones llevan a esa misma pantalla. Las rutas se administran en Now Playing. Funciona en segundo plano con bandeja, ocultar y restaurar.
+La interfaz utiliza controles de escritorio, colores del sistema y cuatro pantallas: **Inicio, Historial, Conexiones y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Ajustes contiene el formulario directamente; los accesos desde Conexiones llevan a esa misma pantalla. Las rutas se administran en Now Playing. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
-Novedades de esta versión: [un solo formato de título](docs/NOVEDADES-0.5.0a5.md). Incluye la [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md). Conserva [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md) y [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
+Novedades de esta versión: [enfoque en metadatos](docs/NOVEDADES-0.5.0a6.md). Conserva el [formato único de título](docs/NOVEDADES-0.5.0a5.md), la [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md) y las fuentes, portadas y publicación al receptor.
 
 ## Instalar y actualizar en Windows
 
@@ -36,7 +36,7 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 
 ## Configurar la estación
 
-1. **Ajustes → Estación**: nombre, descripción, web, género, logo y apariencia. Eslogan y mensajes quedan en la sección opcional de personalización. Los mensajes sin música son solo visuales en MetaDATA y su reproductor.
+1. **Ajustes → Estación**: nombre, descripción, web, género, logo y apariencia. El eslogan queda en Identidad opcional. Sin una canción válida, Inicio muestra la descripción de la estación y deja vacíos los datos musicales enviados.
 2. **Conexiones → RadioBOSS → Configurar**: activa su API HTTP en RadioBOSS, indica dirección/usuario y escribe la contraseña en la app. Pulsa **Probar conexión** y **Guardar**. Usa localhost para esta instalación.
 3. **Ajustes → Reglas**: configura carpetas en la lista blanca y en la lista negra, con **Incluir subcarpetas** por regla. La lista negra tiene prioridad. Excluye también términos y tipos de anuncios, promos y jingles. Sin carpetas aprobadas, RadioBOSS no publica canciones. No se deducen artista y título del nombre del archivo.
 4. **Conexiones → Spotify**: consulta sus sesiones multimedia de Windows sin clave API ni OAuth. Empieza en observación; permite sus canciones en selección e historial cuando hayas comprobado el comportamiento. Windows no garantiza clasificar todos los anuncios. La app no concede derechos de retransmisión; consulta las condiciones de Spotify.
@@ -61,15 +61,15 @@ Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y public
 
 **Ajustes → Publicación** permite enviar artista, título, álbum, otros campos disponibles y la portada juntos a tu servidor. La clave se configura en la app. El receptor publica rutas estables, confirma vigencia y vacía datos al caducar o recibir una pausa. Incluye servicio Python y configuración Docker Compose con almacenamiento persistente: [instalación y contrato de la API](docs/RECEPTOR.md). No requiere conectar directamente MetaDATA a un proveedor de streaming. La web futura consumirá estas rutas y no forma parte de este proyecto.
 
-El alcance actual incluye fuentes, reglas, Now Playing, encoders, publicación, monitoreo por muestras e incidentes y estadísticas opcionales del servidor de audio. Consulta la [guía de monitoreo](docs/MONITOREO.md). Las peticiones al JSON no se cuentan como oyentes. El instalador completo con FFmpeg y el despliegue se preparan al final.
+El alcance actual incluye fuentes, reglas, portadas, Now Playing, encoders y publicación al receptor. Se retiraron el monitoreo de audio, las estadísticas y el reproductor local: no se pide un enlace de audio en MetaDATA. Los ajustes antiguos de esas funciones no activan servicios ni consultas. El instalador completo con FFmpeg y el despliegue se preparan al final.
 
 ## Pausas y carátulas
 
 **Durante anuncios, pausas, errores o ausencia de una canción válida, artista, título, álbum y portada de canción quedan vacíos.** El archivo TXT contiene una línea vacía y el XML no convierte el mensaje de estación en título. El emisor debe leer y propagar el vaciado; MetaDATA no publica títulos directamente en los servidores. No se envían nombre ni eslogan como una canción ficticia.
 
-El JSON distingue los campos musicales de `station`, `slogan`, `logo_file` y `display_message`, que son identidad y presentación del reproductor propio. Durante una pausa, `is_music` es falso y `artwork_file` queda vacío. El logo puede mostrarse como identidad visual sin incorporarse al historial musical.
+El JSON distingue los campos musicales de `station`, `slogan`, `logo_file` y `display_message`, que son datos de identidad y presentación para consumidores de metadatos. Sin canción válida, Inicio y display_message usan la descripción de la estación; los antiguos mensajes de pausa/anuncios ya no se utilizan. Si no hay descripción configurada, Inicio indica Sin reproducción. Durante una pausa, `is_music` es falso y `artwork_file` queda vacío. El logo puede mostrarse como identidad visual sin incorporarse al historial musical.
 
-Para una **canción real sin portada**, se utiliza el logo configurado como imagen de respaldo y se conservan su artista y título reales. Esto funciona en la ventana, en las salidas que incorporan imágenes y en el reproductor propio. Su presentación en otras aplicaciones depende del formato y del receptor.
+Para una **canción real sin portada**, se utiliza el logo configurado como imagen de respaldo y se conservan su artista y título reales. Esto funciona en la ventana, en las salidas que incorporan imágenes y mediante el receptor de metadatos. Su presentación en otras aplicaciones depende del formato y del receptor.
 
 Enviar un vaciado y dejar de enviar actualizaciones son operaciones distintas: dejar de actualizar puede mantener la canción anterior. El manual de RadioCaster no garantiza el tratamiento de un archivo vacío. Hay que comprobarlo en tu versión. Icecast admite actualizaciones del título, pero no incluye una orden universal para excluir entradas del historial de otros servicios. AzuraCast, Liquidsoap y cada reproductor pueden aplicar caché, datos de respaldo o mostrar la última canción; **no se garantiza controlar sus historiales desde esta app**. No se modificó la estación real para verificarlo.
 
@@ -93,10 +93,9 @@ Las consultas ocurren cada dos segundos por defecto. Hay latencia de detección 
 
 ## Salidas y conexiones opcionales
 
-Además del TXT, se generan XML, JSON, imágenes y un reproductor HTML. Se conservan álbum, año, género, ISRC, duración y progreso cuando la fuente los entregue, sin inventar valores.
+Además del TXT, se generan XML, JSON e imágenes. Se conservan álbum, año, género, ISRC, duración y progreso cuando la fuente los entregue, sin inventar valores.
 
-- **Ajustes → Carátulas** habilita la vista local, limitada a esta computadora. El botón Ver carátulas la abre; el audio requiere pulsar Play.
-- El alojamiento WebDAV opcional publica imágenes y JSON en una carpeta HTTPS existente con lectura pública. No sustituye una configuración de portadas de AzuraCast.
+- El receptor autohospedado publica JSON y portada juntos; no requiere un enlace de audio ni cambia las portadas de otros proveedores automáticamente.
 - **Conexiones → Now Playing** muestra los archivos TXT, XML y JSON para tu emisor.
 - **Ajustes → Codificador** genera un comando general con valores numéricos para programas que admitan el contrato de audio por consola. Las variables de RadioCaster son una adaptación opcional, no la base del producto.
 
@@ -111,8 +110,8 @@ La carpeta predeterminada es `%LOCALAPPDATA%\RadioMetadataManager-OggPrueba`. La
 | Módulo | Responsabilidad |
 | --- | --- |
 | `sources.py`, `model.py` | Lecturas de fuentes, selección y exclusiones |
-| `outputs.py` | Exportación local y alojamiento WebDAV opcional; conectores directos heredados sin uso en el motor |
-| `webserver.py`, `player.py` | API y reproductor local |
+| `outputs.py` | Exportación local; conectores heredados sin uso en el motor |
+| `receiver.py`, `publication.py` | Receptor autohospedado y envío de metadatos y portada |
 | `aac_encoder.py`, `ogg_encoder.py` | Codificación por consola, con adaptación opcional de comandos |
 | `engine.py`, `storage.py` | Ciclo de trabajo e historial |
 | `config.py`, `credentials.py` | Ajustes y claves separadas |

@@ -11,7 +11,6 @@ Se revisaron los sistemas [Minimal](https://github.com/nexu-io/open-design/blob/
 - Inicio: canción, artista, álbum, fuente y controles de uso diario. La carátula acompaña la información.
 - Historial: registro musical y exportación.
 - Conexiones: estado de las fuentes separado del estado de las salidas. Cada acceso de configuración lleva a la sección correspondiente.
-- Monitoreo: audio, conteo del servidor e incidentes.
 - Ajustes: un formulario integrado y persistente, con navegación propia. Evitar lanzar una segunda ventana de configuración o una página de botones que repita ese menú.
 
 ## Lenguaje visual
@@ -22,20 +21,24 @@ Usar márgenes de 16–20 unidades lógicas en paneles, separaciones de 8–16 y
 
 ## Una ubicación por tarea
 
-Las rutas, el selector único de formato del título y los botones de copiar/abrir archivos pertenecen a Now Playing. El texto combinado mantiene un solo formato en todas las salidas. Por compatibilidad se usa Artista - Canción por defecto y se avisa si se selecciona otro formato que pueda afectar a su interpretación. No repetir esta barra en Inicio, Historial o Monitoreo. La configuración vive en Ajustes; los accesos desde otras pantallas son atajos al mismo formulario y mantienen sus cambios pendientes.
+Las rutas, el selector único de formato del título y los botones de copiar/abrir archivos pertenecen a Now Playing. El texto combinado mantiene un solo formato en todas las salidas. Por compatibilidad se usa Artista - Canción por defecto y se avisa si se selecciona otro formato que pueda afectar a su interpretación. No repetir esta barra en Inicio o Historial. La configuración vive en Ajustes; los accesos desde otras pantallas son atajos al mismo formulario y mantienen sus cambios pendientes.
 
-Las instrucciones específicas de emisores se agrupan bajo una ayuda desplegable. La integración WebDAV aparece al activarla y mantiene sus campos y credenciales cuando está oculta. Los mensajes visuales de estación y las plantillas personalizadas también se muestran cuando se solicitan.
+Las instrucciones específicas de emisores se agrupan bajo una ayuda desplegable. El eslogan opcional y las plantillas personalizadas también se muestran cuando se solicitan.
 
 ## Comportamiento
 
 Guardar aplica la configuración al motor y actualiza los estados. Descartar restaura la configuración aplicada y elimina las claves pendientes, sin cambiar el almacén de credenciales. Cambiar de pestaña no descarta el formulario. Enter en un campo no guarda automáticamente. Las comprobaciones en curso impiden destruir su formulario; ocultar en la bandeja sigue permitido.
 
-Atajos de Windows: Ctrl+1 a Ctrl+5 cambian de pantalla; Ctrl+, abre Ajustes. Ctrl+S guarda cuando el foco está dentro de Ajustes. Las tablas y los campos conservan la navegación nativa por teclado. Los mensajes de estado y errores se muestran como texto plano.
+Atajos de Windows: Ctrl+1 a Ctrl+4 cambian de pantalla; Ctrl+, abre Ajustes. Ctrl+S guarda cuando el foco está dentro de Ajustes. Las tablas y los campos conservan la navegación nativa por teclado. Los mensajes de estado y errores se muestran como texto plano.
 
 ## Información progresiva
 
-Inicio presenta un motivo breve; la limitación de la selección respecto de la consola permanece en la ayuda del motivo y en los detalles. Los mensajes de diagnóstico están disponibles bajo Mostrar detalles. Las funciones desactivadas no se muestran como errores. Un archivo generado no se presenta como confirmación de emisión.
+Inicio agrupa título, artista y álbum con un espaciado compacto. Sin canción válida usa la descripción en el lugar del título y oculta artista y álbum; no usa mensajes de pausa o anuncios y no exporta la descripción como canción. También presenta un motivo breve; la limitación de la selección respecto de la consola permanece en la ayuda del motivo y en los detalles. Los mensajes de diagnóstico están disponibles bajo Mostrar detalles. Las funciones desactivadas no se muestran como errores. Un archivo generado no se presenta como confirmación de emisión.
 
 ## Validación
 
 Revisar Inicio, Conexiones y Ajustes con los mismos datos de demostración antes y después. Comprobar el tamaño habitual de 960×680 y el mínimo de 760×560. Verificar que Guardar/Descartar, navegación, credenciales y rutas siguen funcionando y que hay un único control de archivos en la ventana principal. La comprobación nativa de apariencia clara/oscura y escala de Windows se realiza en Windows; las capturas locales de desarrollo no sustituyen esa validación.
+
+## Alcance
+
+No incluir monitoreo de audio, estadísticas de oyentes, reproductor local ni campos de enlace de audio. Las carátulas son metadatos de las canciones y siguen apareciendo en Inicio, la caché y las salidas compatibles. La publicación del JSON y la portada al receptor se configura en Publicación.

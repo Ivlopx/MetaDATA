@@ -38,22 +38,22 @@ class GuiTests(unittest.TestCase):
                 self.assertIn("RadioBOSS", window.active.text())
                 dialog = SettingsDialog(config, window)
                 dialog.fields["station_name"].setText("Radio de prueba")
-                dialog.fields["stream_url"].setText("https://radio.example/live.mp3")
+                dialog.fields["station_genre"].setText("Pop")
                 dialog.save()
                 self.assertEqual(dialog.result_config.station_name, "Radio de prueba")
                 self.assertFalse(dialog.result_config.remote_monitor_enabled)
                 self.assertNotIn('AzuraCast', dialog.page_names)
                 self.assertNotIn('Icecast directo', dialog.page_names)
                 self.assertIn('Now Playing', dialog.page_names)
-                self.assertEqual(dialog.result_config.stream_url, "https://radio.example/live.mp3")
+                self.assertEqual(dialog.result_config.station_genre, "Pop")
                 window.scenarios.setCurrentIndex(3)
-                until(lambda: window.title.text() == config.break_message)
+                until(lambda: window.title.text() == (config.description or 'Sin reproducción'))
                 self.assertEqual(window.history.rowCount(), 1)
                 self.assertEqual(window.album.text(), "")
                 window.scenarios.setCurrentIndex(2)
                 until(lambda: "Varias" in window.reason.text() and window.title.text() == "Canción de prueba")
                 window.mode.setCurrentIndex(3)
-                until(lambda: window.title.text() == config.break_message and "activado" in window.reason.text())
+                until(lambda: window.title.text() == (config.description or 'Sin reproducción') and "activado" in window.reason.text())
                 if os.environ.get("RADIO_SCREENSHOT"):
                     window.grab().save(os.environ["RADIO_SCREENSHOT"])
             finally:
@@ -111,7 +111,7 @@ class GuiTests(unittest.TestCase):
             config = store.load()
             window = MainWindow(store, config, demo=True)
             try:
-                self.assertEqual([window.tabs.tabText(i) for i in range(5)], ['Inicio', 'Historial', 'Conexiones', 'Monitoreo', 'Ajustes'])
+                self.assertEqual([window.tabs.tabText(i) for i in range(4)], ['Inicio', 'Historial', 'Conexiones', 'Ajustes'])
                 window.worker.stop()
                 window.worker.wait()
                 history = History(Path(tmp) / 'demo-history.sqlite3')
@@ -232,12 +232,11 @@ class GuiTests(unittest.TestCase):
             self.assertTrue(store.load().windows_sources[0]['publish'])
             self.assertEqual(len(store.load().folder_rules), 2)
 
-    def test_title_presets_custom_preview_and_monitor_settings_roundtrip(self):
+    def test_title_presets_and_focused_settings_roundtrip(self):
         from PySide6.QtWidgets import QApplication
         from radio_metadata.config import ConfigStore
         from radio_metadata.settings import SettingsDialog
         from radio_metadata.credentials import MemoryCredentials
-        from radio_metadata.monitor_panel import MonitorPanel
         app = QApplication.instance() or QApplication([])
         with tempfile.TemporaryDirectory() as tmp:
             store = ConfigStore(Path(tmp))
@@ -252,24 +251,17 @@ class GuiTests(unittest.TestCase):
             self.assertEqual(dialog.fields['title_format'].text(), '{artist} - {title}')
             dialog.title_presets.setCurrentIndex(4)
             dialog.fields['title_format'].setText('{title} | {artist}')
-            dialog.fields['audio_monitor_enabled'].setChecked(True)
-            dialog.fields['stream_url'].setText('https://audio.example/live.aac')
-            dialog.fields['statistics_enabled'].setChecked(True)
-            dialog.fields['statistics_url'].setText('https://stats.example/current')
-            dialog.fields['statistics_format'].setCurrentIndex(1)
+            self.assertNotIn('Monitoreo', dialog.page_names)
+            self.assertNotIn('Carátulas', dialog.page_names)
+            self.assertNotIn('stream_url', dialog.fields)
             dialog.save()
             saved = store.load()
             self.assertEqual(saved.title_format, '{title} | {artist}')
-            self.assertEqual(saved.statistics_format, 'icecast')
+            self.assertFalse(saved.audio_monitor_enabled)
+            self.assertFalse(saved.local_server_enabled)
             reopened = SettingsDialog(saved, store=store, credentials=MemoryCredentials())
             self.assertEqual(reopened.title_presets.currentIndex(), 4)
             self.assertEqual(reopened.fields['title_format'].text(), '{title} | {artist}')
-            panel = MonitorPanel()
-            panel.update_data(dict(statistics_enabled=True, audio_enabled=False, records=[dict(
-                channel='statistics', state='error', message='Sin datos', checked_at='2026-11-11T10:00:00+00:00', listeners=None)],
-                samples=[], incidents=[], summary=(0, None, None)))
-            self.assertIn('Sin datos', panel.labels['statistics'].text())
-            self.assertNotIn('0 simultáneos', panel.labels['statistics'].text())
 
     def test_embedded_settings_single_export_widget_save_discard_and_navigation(self):
         from PySide6.QtWidgets import QApplication
@@ -288,7 +280,7 @@ class GuiTests(unittest.TestCase):
             try:
                 window.worker.stop();window.worker.wait()
                 window.settings('Now Playing')
-                self.assertEqual(window.tabs.currentIndex(), 4)
+                self.assertEqual(window.tabs.currentIndex(), 3)
                 self.assertTrue(window.settings_form.embedded)
                 self.assertEqual(len(window.findChildren(OutputFilesWidget)), 1)
                 self.assertEqual(window.settings_form.navigation.currentItem().text(), 'Now Playing')
@@ -353,8 +345,39 @@ class GuiTests(unittest.TestCase):
                 window.show()
                 window.quit()
                 self.assertFalse(window.exiting)
-                self.assertEqual(window.tabs.currentIndex(), 4)
+                self.assertEqual(window.tabs.currentIndex(), 3)
                 self.assertIn('termine', window.settings_form.message.text())
             finally:
                 finished.set();check.wait()
+                window.quit()
+
+    def test_compact_song_details_and_description_only_when_no_song(self):
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtTest import QTest
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow
+        from radio_metadata.model import Snapshot, resolve
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp));config = store.load()
+            config.description = 'Descripción de la estación'
+            config.spotify_publish = True
+            config.break_message = 'Mensaje antiguo de anuncios'
+            window = MainWindow(store, config, demo=True)
+            window.show();window.worker.stop();window.worker.wait();app.processEvents()
+            try:
+                song = Snapshot('spotify', True, 'Artist', 'Song', kind='music', album='Album')
+                window.update_state((resolve([song], config), [song], [], [], []))
+                QTest.qWait(20)
+                self.assertLessEqual(window.artist.y() - (window.title.y() + window.title.height()), 6)
+                self.assertLessEqual(window.album.y() - (window.artist.y() + window.artist.height()), 6)
+                window.update_state((resolve([], config), [], [], [], []))
+                self.assertEqual(window.title.text(), config.description)
+                self.assertEqual(window.artist.text(), '')
+                self.assertEqual(window.album.text(), '')
+                self.assertTrue(window.artist.isHidden())
+                self.assertTrue(window.album.isHidden())
+                self.assertNotIn('idle_message', window.settings_form.fields)
+                self.assertNotIn('break_message', window.settings_form.fields)
+            finally:
                 window.quit()

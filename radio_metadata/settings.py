@@ -17,15 +17,12 @@ from .connection_tests import OverlayCredentials, check_connection
 
 
 def credential_key(service, config):
-    if service == 'statistics':
-        from .monitoring import stats_key
-        return stats_key(config)
     if service == 'receiver':
         from .publication import publication_key
         return publication_key(config)
     if service == 'radioboss':
         return secret_id(service, config.radioboss_url, config.radioboss_user)
-    return secret_id('webdav', config.webdav_upload_url, config.webdav_username)
+    raise ValueError('Servicio de credenciales no disponible')
 
 
 class SecretField(QWidget):
@@ -184,15 +181,15 @@ class SettingsDialog(QDialog):
         theme.setCurrentIndex(theme.findData(config.theme))
         self.fields['theme'] = theme
         general.addRow('Apariencia', theme)
-        note(general, 'Sin música se envían artista y título vacíos. Los mensajes y el logo se muestran solo en MetaDATA y su reproductor; no se publican como una canción.')
+        note(general, 'Sin una canción válida, Inicio muestra la descripción de la estación. Los campos musicales enviados permanecen vacíos; el logo y la descripción no se publican como una canción.')
 
-        messages_button = QPushButton('Personalizar mensajes visuales')
+        messages_button = QPushButton('Identidad opcional')
         messages_button.setMaximumWidth(250)
         messages_button.setCheckable(True)
         general.addRow(messages_button)
         messages = QWidget()
         messages_form = QFormLayout(messages)
-        for key, label in [('slogan', 'Eslogan'), ('idle_message', 'Sin música'), ('break_message', 'En pausa')]:
+        for key, label in [('slogan', 'Eslogan')]:
             text(messages_form, key, label)
         messages.setVisible(False)
         messages_button.toggled.connect(messages.setVisible)
@@ -301,22 +298,6 @@ class SettingsDialog(QDialog):
         probe(publish, 'Receptor')
         note(publish, 'Envía la ficha y la imagen juntas al cambiar la canción. Durante pausas y exclusiones vacía los campos. El receptor publica /nowplaying.json y /artwork; si se corta la conexión, caducan automáticamente. Funciona con tu servidor, independientemente del programa de emisión. Requiere instalar el receptor incluido en el proyecto.')
 
-        art = section('Carátulas')
-        text(art, 'stream_url', 'Enlace de audio')
-        check(art, 'local_server_enabled', 'Habilitar reproductor local con carátulas')
-        webdav_toggle = check(art, 'webdav_enabled', 'Usar un alojamiento WebDAV existente (avanzado)')
-        webdav_widget = QWidget()
-        webdav_form = QFormLayout(webdav_widget)
-        webdav_form.setContentsMargins(0, 8, 0, 8)
-        for key, label in [('webdav_upload_url', 'Carpeta HTTPS de subida'), ('webdav_public_url', 'Carpeta HTTPS pública'), ('webdav_username', 'Usuario')]:
-            text(webdav_form, key, label)
-        secret(webdav_form, 'webdav', 'Contraseña')
-        probe(webdav_form, 'Alojamiento de carátulas')
-        note(webdav_form, 'El alojamiento debe permitir WebDAV y lectura pública. Es una alternativa al receptor autohospedado de Publicación. No modifica las carátulas del servidor de audio ni publica canciones durante las pausas.')
-        webdav_widget.setVisible(config.webdav_enabled)
-        webdav_toggle.toggled.connect(webdav_widget.setVisible)
-        art.addRow(webdav_widget)
-
         ogg = section('Codificador')
         note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. Para un emisor que admita codificador externo por consola: recibe audio PCM de 16 bits por entrada estándar y devuelve audio codificado por salida estándar. Comprueba ese contrato en tu programa; este módulo no captura audio ni conecta al servidor.')
         encoder_format = QComboBox()
@@ -363,32 +344,9 @@ class SettingsDialog(QDialog):
         self.refresh_ogg_command()
         note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; hay una prueba de laboratorio con Chrome y hls.js, pendiente de validar con tu emisor en Windows. No se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
 
-        monitoring = section('Monitoreo')
-        check(monitoring, 'audio_monitor_enabled', 'Comprobar la recepción y el silencio del audio')
-        note(monitoring, 'Usa el enlace de audio de Carátulas y el FFmpeg seleccionado en Codificador. Toma muestras periódicas desde esta computadora, sin reproducir sonido por los altavoces. No representa un monitoreo continuo ni desde varios países. Cada comprobación abre una conexión de oyente y consume datos.')
-        number(monitoring, 'monitor_interval_seconds', 'Comprobar cada (segundos)', 15, 300)
-        number(monitoring, 'monitor_sample_seconds', 'Duración de muestra (segundos)', 3, 10)
-        number(monitoring, 'monitor_silence_seconds', 'Silencio mínimo en la muestra (segundos)', 1, 10)
-        number(monitoring, 'monitor_threshold_db', 'Umbral de silencio (dBFS)', -90, -10)
-        number(monitoring, 'monitor_confirmations', 'Resultados consecutivos para abrir/cerrar incidentes', 1, 5)
-        number(monitoring, 'monitor_retention_days', 'Conservar datos de monitoreo (días)', 1, 365)
-        check(monitoring, 'statistics_enabled', 'Consultar oyentes al servidor de audio (solo lectura)')
-        text(monitoring, 'statistics_url', 'URL completa de estadísticas JSON')
-        stats_format = QComboBox()
-        for label, value in [('JSON genérico', 'generic'), ('Icecast status-json', 'icecast'), ('AzuraCast Now Playing', 'azuracast')]:
-            stats_format.addItem(label, value)
-        stats_format.setCurrentIndex(stats_format.findData(config.statistics_format))
-        self.fields['statistics_format'] = stats_format
-        monitoring.addRow('Formato de la respuesta', stats_format)
-        text(monitoring, 'statistics_mount', 'Punto de montaje (solo Icecast)')
-        secret(monitoring, 'statistics', 'Token Bearer opcional')
-        probe(monitoring, 'Estadísticas')
-        note(monitoring, 'Son lecturas opcionales de datos reales del servidor; no conectan ni controlan la emisión. JSON genérico: {"listeners": 10}. Se guardan muestras, pico y promedio de oyentes simultáneos; no identifican oyentes únicos ni equivalen al número total de personas. Un fallo no se registra como cero oyentes.')
-
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
-        number(advanced, 'local_server_port', 'Puerto del reproductor local', 1024, 65535)
-        number(advanced, 'stale_seconds', 'Ocultar datos vencidos tras (segundos)', 15, 300)
+        number(advanced, 'stale_seconds', 'Caducidad de metadatos (segundos)', 15, 300)
         text(advanced, 'spotify_app_id_contains', 'Identificador de Spotify contiene')
         note(advanced, 'Las claves se guardan en el almacén de credenciales de tu usuario de Windows, separadas del archivo de ajustes. Cambiar dirección o usuario requiere la clave de esa conexión. En demostración las claves son temporales.')
         self.message = QLabel('')
@@ -479,6 +437,13 @@ class SettingsDialog(QDialog):
                 values[key] = [v.strip() for v in field.toPlainText().splitlines() if v.strip()]
         values['azuracast_write_enabled'] = False
         values['remote_monitor_enabled'] = False
+        values['audio_monitor_enabled'] = False
+        values['statistics_enabled'] = False
+        values['local_server_enabled'] = False
+        values['webdav_enabled'] = False
+        values['stream_url'] = ''
+        values['idle_message'] = ''
+        values['break_message'] = ''
         values['icecast_targets'] = [dict(target, enabled=False, send_artwork_url=False)
                                     for target in self.original.icecast_targets]
         values.update(self.source_settings.values())

@@ -1,4 +1,6 @@
-# Monitoreo y estadísticas
+# Monitoreo y estadísticas (función retirada)
+
+Este documento describe una versión anterior. Desde 0.5.0a6 estas funciones no aparecen en la aplicación y el motor no las activa, aunque existan ajustes guardados. Se conserva como referencia histórica.
 
 La pestaña **Monitoreo** separa la recepción de audio, las estadísticas del servidor y el historial de incidentes. No controla el emisor, no altera la selección de fuente y no reintroduce conexiones de publicación a proveedores.
 

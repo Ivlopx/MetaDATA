@@ -35,7 +35,7 @@ class PolicyTests(unittest.TestCase):
     def test_select_priority_then_filter_ad(self):
         result = resolve([music(title="Anuncio especial"), music("spotify")], self.config)
         self.assertIsNone(result.song)
-        self.assertEqual(result.text, self.config.break_message)
+        self.assertEqual(result.text, self.config.description or 'Sin reproducción')
         self.assertTrue(result.conflict)
 
     def test_switch_pause_and_manual_no_fallback(self):
