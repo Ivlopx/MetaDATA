@@ -89,6 +89,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertFalse(stale['is_music'])
             self.assertEqual(stale['artwork_file'], '')
             self.assertEqual(stale['text'], '')
+            self.assertEqual(stale['display_text'], '')
             self.assertEqual(stale['album'], '')
 
     def test_kh_numeric_success_with_rejection_message_is_failure(self):

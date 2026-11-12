@@ -15,7 +15,7 @@ Desde Conexiones → **Now Playing**, o Ajustes → **Now Playing**, puedes eleg
 
 | Salida | Contenido | Cómo integrarla |
 | --- | --- | --- |
-| `nowplaying.txt` | Título combinado configurable, UTF-8; línea vacía en pausas | Programa que lea el título de un archivo de texto |
+| `nowplaying.txt` | Texto para el emisor (Artista - Canción por defecto), UTF-8; línea vacía en pausas | Programa que lea el título de un archivo de texto |
 | `nowplaying.xml` | Atributos musicales separados y `TRACK/CASTTITLE` combinado | Configurar la plantilla que admita el lector XML del emisor |
 | `nowplaying.json` | Esquema propio de MetaDATA con datos musicales y referencia a imagen | Integración o reproductor que conozca esos campos |
 | `covers/` | Imágenes separadas de los archivos de texto | El consumidor necesita un mecanismo para leer o publicar imágenes |
@@ -55,3 +55,5 @@ Los conectores e investigaciones antiguos pueden seguir presentes como código/d
 ## Monitoreo de solo lectura
 
 La pestaña Monitoreo añade comprobaciones de audio y estadísticas opcionales del servidor. No utiliza contraseñas de emisión ni publica datos al servidor. Puede usar un token de lectura configurado desde la app. Consulta la [guía de monitoreo](MONITOREO.md).
+
+El formato visual se conserva por separado en XML/DISPLAYTITLE y JSON/display_text. Para servidores que interpretan el título combinado conserva Artista - Canción en Texto para el emisor; cambiar su orden puede invertir los campos. Consulta la [corrección de compatibilidad](NOVEDADES-0.5.0a4.md).

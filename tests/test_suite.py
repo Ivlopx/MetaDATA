@@ -117,7 +117,7 @@ class ReceiverTests(unittest.TestCase):
     def test_store_clear_expiry_restart_and_single_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = ReceiverStore(tmp, 15)
-            payload = dict(state=dict(is_music=True, artist='Artist', title='Title', album='Album', filename='private'),
+            payload = dict(state=dict(is_music=True, artist='Artist', title='Title', album='Album', filename='private', display_text='Title - Artist'),
                            artwork_base64=base64.b64encode(PNG).decode())
             revision = store.put(payload)
             state, image = ReceiverStore(tmp, 15).snapshot()
@@ -128,6 +128,7 @@ class ReceiverTests(unittest.TestCase):
             with patch('radio_metadata.receiver.time.time', return_value=time.time() + 16):
                 state, image = store.snapshot()
             self.assertTrue(state['expired'])
+            self.assertEqual(state['display_text'], '')
             self.assertFalse(state['is_music'])
             self.assertEqual((state['artist'], state['artwork_url'], image), ('', '', b''))
             payload['state']['is_music'] = False

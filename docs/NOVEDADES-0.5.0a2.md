@@ -1,5 +1,7 @@
 # MetaDATA 0.5.0a2
 
+El formato visual y el texto emitido se separaron en [0.5.0a4](NOVEDADES-0.5.0a4.md) para evitar invertir artista y canción en el servidor.
+
 - **Monitoreo:** recepción y decodificación real del audio, medición de nivel y detección de silencio en muestras configurables. Trabaja en paralelo al procesamiento de metadatos.
 - **Incidentes:** apertura y cierre tras resultados consecutivos, historial persistente, conservación configurable y exportación de los 200 incidentes visibles.
 - **Estadísticas:** lectura opcional de JSON genérico, Icecast o AzuraCast. Últimas muestras de oyentes simultáneos, pico y promedio de muestras en 24 horas; errores como desconocidos y medidas separadas por endpoint/montaje.

@@ -38,7 +38,8 @@ class TitleFormatTests(unittest.TestCase):
         self.config.title_format = '{title} | {artist} | {album}'
         with tempfile.TemporaryDirectory() as tmp:
             state = LocalOutput(Path(tmp)).publish(resolve([self.song], self.config), self.config)
-        self.assertEqual(state['text'], 'Canción | Artista | Álbum')
+        self.assertEqual(state['display_text'], 'Canción | Artista | Álbum')
+        self.assertEqual(state['text'], 'Artista - Canción')
         self.assertEqual((state['artist'], state['title'], state['album']), ('Artista', 'Canción', 'Álbum'))
         self.assertEqual(resolve([replace(self.song, title='Publicidad')], self.config).song, None)
 
@@ -186,3 +187,37 @@ class MonitorStatisticsTests(unittest.TestCase):
                     audio.assert_not_called();stats.assert_not_called()
             finally:
                 engine.close()
+
+class BroadcastTitleCompatibilityTests(unittest.TestCase):
+    def test_visual_order_never_changes_default_emitter_parser_fields(self):
+        import xml.etree.ElementTree as ET
+        song = Snapshot('spotify', True, 'Artist example', 'Track example', kind='music')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for visual in ('{title} - {artist}', '{title}', '{title} | {artist}'):
+                config = Config(spotify_publish=True, title_format=visual)
+                state = LocalOutput(root).publish(resolve([song], config), config)
+                track = ET.fromstring((root / 'nowplaying.xml').read_bytes()).find('TRACK')
+                parsed_artist, parsed_title = track.get('CASTTITLE').split(' - ', 1)
+                self.assertEqual((parsed_artist, parsed_title), (song.artist, song.title))
+                self.assertEqual(track.get('DISPLAYTITLE'), state['display_text'])
+                self.assertEqual(track.get('ARTIST'), song.artist)
+                self.assertEqual(track.get('TITLE'), song.title)
+                self.assertEqual((root / 'nowplaying.txt').read_text().strip(), 'Artist example - Track example')
+                state = LocalOutput(root).publish(resolve([], config), config)
+                track = ET.fromstring((root / 'nowplaying.xml').read_bytes()).find('TRACK')
+                self.assertEqual((track.get('CASTTITLE'), track.get('DISPLAYTITLE'), state['display_text']), ('', '', ''))
+
+    def test_old_configuration_gets_compatible_emitter_default_without_losing_visual_choice(self):
+        from dataclasses import asdict
+        from radio_metadata.config import ConfigStore
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp))
+            values = asdict(Config(title_format='{title} | {artist}'))
+            values.pop('broadcast_title_format')
+            store.path.write_text(json.dumps(values))
+            loaded = store.load()
+            self.assertEqual(loaded.title_format, '{title} | {artist}')
+            self.assertEqual(loaded.broadcast_title_format, '{artist} - {title}')
+            with self.assertRaises(ValueError):
+                replace(loaded, broadcast_title_format='{title.__class__}').validate()

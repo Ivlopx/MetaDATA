@@ -22,7 +22,7 @@ Usar márgenes de 16–20 unidades lógicas en paneles, separaciones de 8–16 y
 
 ## Una ubicación por tarea
 
-Las rutas, el formato del título y los botones de copiar/abrir archivos pertenecen a Now Playing. No repetir esta barra en Inicio, Historial o Monitoreo. La configuración vive en Ajustes; los accesos desde otras pantallas son atajos al mismo formulario y mantienen sus cambios pendientes.
+Las rutas, los formatos del título y los botones de copiar/abrir archivos pertenecen a Now Playing. Presentación y Texto para el emisor son controles independientes: el orden visual no debe alterar por defecto la identificación de artista y canción en el servidor. No repetir esta barra en Inicio, Historial o Monitoreo. La configuración vive en Ajustes; los accesos desde otras pantallas son atajos al mismo formulario y mantienen sus cambios pendientes.
 
 Las instrucciones específicas de emisores se agrupan bajo una ayuda desplegable. La integración WebDAV aparece al activarla y mantiene sus campos y credenciales cuando está oculta. Los mensajes visuales de estación y las plantillas personalizadas también se muestran cuando se solicitan.
 

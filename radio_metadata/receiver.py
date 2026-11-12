@@ -16,9 +16,9 @@ from .config import atomic_write
 from .image_cache import image_type
 
 MAX_BODY = 6 * 1024 * 1024
-TEXT_FIELDS = ('text', 'artist', 'title', 'album', 'album_artist', 'year', 'genre', 'isrc',
+TEXT_FIELDS = ('text', 'display_text', 'artist', 'title', 'album', 'album_artist', 'year', 'genre', 'isrc',
                'source', 'station', 'description', 'website', 'station_genre', 'stream_url')
-SONG_FIELDS = ('text', 'artist', 'title', 'album', 'album_artist', 'year', 'genre', 'isrc', 'source')
+SONG_FIELDS = ('text', 'display_text', 'artist', 'title', 'album', 'album_artist', 'year', 'genre', 'isrc', 'source')
 NUMBER_FIELDS = ('duration_ms', 'position_ms', 'track_number')
 
 

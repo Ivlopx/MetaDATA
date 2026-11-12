@@ -15,7 +15,7 @@ def live_state(directory, now=None):
     now = now or datetime.now(timezone.utc)
     age = (now - datetime.fromisoformat(state['updated_at'])).total_seconds()
     if age > state['stale_seconds'] or age < -60:
-        state.update(text='', display_message=state['idle_message'], source='estación', is_music=False, artist='', title='',
+        state.update(text='', display_text='', display_message=state['idle_message'], source='estación', is_music=False, artist='', title='',
                      album='', album_artist='', year='', genre='', isrc='', duration_ms=None,
                      position_ms=None, track_number=None, artwork_file='',
                      artwork_origin='', stale=True)

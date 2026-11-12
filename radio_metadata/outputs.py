@@ -20,7 +20,9 @@ from . import __version__
 
 def xml_state(state):
     root = Writer.Element('PLAYER', name='MetaDATA', version=__version__)
-    fields = {'CASTTITLE': state['text'] if state['is_music'] else '', 'ARTIST': state['artist'], 'TITLE': state['title'] if state['is_music'] else '',
+    fields = {'CASTTITLE': state['text'] if state['is_music'] else '',
+              'DISPLAYTITLE': state.get('display_text', state['text']) if state['is_music'] else '',
+              'ARTIST': state['artist'], 'TITLE': state['title'] if state['is_music'] else '',
               'ALBUM': state['album'], 'YEAR': state['year'], 'GENRE': state['genre'],
               'ISRC': state['isrc'], 'SOURCE': state['source'], 'IS_MUSIC': str(state['is_music']).lower(),
               'DURATION_MS': str(state['duration_ms'] or ''), 'ARTWORK': state['artwork_file']}
@@ -57,9 +59,12 @@ class LocalOutput:
                 pass
         logo_file = self._image(logo)
         song_file = self._image(track.artwork) if track else ''
+        from .title_format import format_title
         state = {
             'schema_version': 3, 'updated_at': datetime.now(timezone.utc).isoformat(),
-            'stale_seconds': config.stale_seconds, 'text': clean(decision.text) if track else '',
+            'stale_seconds': config.stale_seconds,
+            'text': format_title(track, config.broadcast_title_format) if track else '',
+            'display_text': clean(decision.text) if track else '',
             'display_message': '' if track else clean(decision.text),
             'source': decision.source, 'is_music': track is not None, 'conflict': decision.conflict,
             'artist': clean(track.artist) if track else '', 'title': clean(track.title) if track else '',

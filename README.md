@@ -1,4 +1,4 @@
-# MetaDATA · copia de prueba 0.5.0a3
+# MetaDATA · copia de prueba 0.5.0a4
 
 **Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
@@ -8,7 +8,7 @@ Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Ad
 
 La interfaz utiliza controles de escritorio, colores del sistema y cinco pantallas: **Inicio, Historial, Conexiones, Monitoreo y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Ajustes contiene el formulario directamente; los accesos desde Conexiones llevan a esa misma pantalla. Las rutas se administran en Now Playing. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
-Novedades de esta versión: [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md). Conserva [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md) y [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
+Novedades de esta versión: [corrección de artista y título al emitir](docs/NOVEDADES-0.5.0a4.md). Incluye la [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md). Conserva [monitoreo, estadísticas y formatos de título](docs/NOVEDADES-0.5.0a2.md) y [fuentes, listas y receptor](docs/NOVEDADES-0.5.md).
 
 ## Instalar y actualizar en Windows
 
@@ -51,7 +51,7 @@ La demo usa historial y salida separados, permite simular canciones, anuncios y 
 
 En **Ajustes → Fuentes**, pulsa **Detectar reproductores** con las aplicaciones abiertas. Las nuevas sesiones de Windows se agregan desactivadas: marca **Consultar** y después **Publicar** si corresponde. Usa **Subir/Bajar** para ordenar la prioridad. La detección muestra sesiones disponibles, no un inventario de aplicaciones instaladas. VLC, Deezer, reproductores de Windows y otras aplicaciones solo funcionan si exponen una sesión multimedia con los datos necesarios. Varias sesiones simultáneas de una misma aplicación se rechazan cuando no hay una selección inequívoca. El tipo desconocido necesita autorización explícita; los vídeos no se admiten como música.
 
-En **Ajustes → Now Playing**, elige el formato del título combinado desde una lista o usa **Personalizado** con vista previa. Por defecto es **Canción - Artista**. Artista, título y álbum siguen separados en el XML/JSON y las etiquetas de los encoders. RadioCaster puede mantener `{TRACK[CASTTITLE]}` sin volver a cambiar su plantilla. El receptor decide cómo presenta o interpreta ese texto; el orden visual no es universal.
+En **Ajustes → Now Playing** hay dos formatos independientes: **Presentación en MetaDATA**, configurable con vista previa, y **Texto para el emisor**, que usa **Artista - Canción** por compatibilidad. Este último controla TXT, XML/CASTTITLE y JSON/text. La presentación se conserva en XML/DISPLAYTITLE y JSON/display_text. Artista, título y álbum siguen separados. RadioCaster puede mantener `{TRACK[CASTTITLE]}`. Invertir el texto emitido puede invertir la identificación de campos en AzuraCast u otros receptores; el orden visual se decide en cada reproductor.
 
 En Inicio selecciona Automático o una fuente concreta. Si varias reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
 

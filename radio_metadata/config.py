@@ -57,6 +57,7 @@ class Config:
     folder_rules: list[dict] = field(default_factory=list)
     station_genre: str = ""
     title_format: str = "{title} - {artist}"
+    broadcast_title_format: str = "{artist} - {title}"
     audio_monitor_enabled: bool = False
     statistics_enabled: bool = False
     statistics_url: str = ""
@@ -120,6 +121,7 @@ class Config:
             raise ValueError("Prioridad inválida")
         from .title_format import validate_format
         validate_format(self.title_format)
+        validate_format(self.broadcast_title_format)
         for key, low, high in (('monitor_interval_seconds', 15, 300), ('monitor_sample_seconds', 3, 10),
                                ('monitor_silence_seconds', 1, 10), ('monitor_threshold_db', -90, -10),
                                ('monitor_confirmations', 1, 5), ('monitor_retention_days', 1, 365)):

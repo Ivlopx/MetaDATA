@@ -226,45 +226,59 @@ class SettingsDialog(QDialog):
             rules.addRow(label + '\nUna por línea', field)
 
         caster = section('Now Playing')
-        self.title_presets = QComboBox()
-        presets = [('Canción - Artista', '{title} - {artist}'), ('Artista - Canción', '{artist} - {title}'),
-                   ('Solo canción', '{title}'), ('Canción - Artista (Álbum)', '{title} - {artist} ({album})'),
-                   ('Personalizado…', None)]
-        for label, value in presets:
-            self.title_presets.addItem(label, value)
-        index = self.title_presets.findData(config.title_format)
-        self.title_presets.setCurrentIndex(index if index >= 0 else len(presets) - 1)
-        caster.addRow('Formato del título combinado', self.title_presets)
-        title_format = QLineEdit(config.title_format)
-        self.fields['title_format'] = title_format
-        custom_row = QWidget()
-        custom_layout = QVBoxLayout(custom_row)
-        custom_layout.setContentsMargins(0, 0, 0, 0)
-        custom_layout.addWidget(title_format)
-        custom_help = QLabel('Campos: {title}, {artist}, {album}, {album_artist}, {year}, {genre}.')
-        custom_help.setWordWrap(True)
-        custom_layout.addWidget(custom_help)
-        caster.addRow(custom_row)
-        preview = QLabel()
-        preview.setTextFormat(Qt.TextFormat.PlainText)
-        def preview_format():
-            from .title_format import format_title
-            from .model import Snapshot
-            try:
-                preview.setText(format_title(Snapshot('preview', artist='Artista', title='Canción', album='Álbum', year='2026'), title_format.text()))
-            except ValueError as error:
-                preview.setText(str(error))
-        def choose_title_preset():
-            value = self.title_presets.currentData()
-            custom_row.setVisible(value is None)
-            if value is not None:
-                title_format.setText(value)
-        self.title_presets.currentIndexChanged.connect(choose_title_preset)
-        title_format.textChanged.connect(preview_format)
-        caster.addRow('Ejemplo', preview)
-        choose_title_preset()
-        preview_format()
-        note(caster, 'El formato cambia el texto combinado. Artista, título y álbum conservan sus campos separados.')
+        def title_selector(key, label):
+            combo = QComboBox()
+            presets = [('Canción - Artista', '{title} - {artist}'), ('Artista - Canción', '{artist} - {title}'),
+                       ('Solo canción', '{title}'), ('Canción - Artista (Álbum)', '{title} - {artist} ({album})'),
+                       ('Personalizado…', None)]
+            for name, value in presets:
+                combo.addItem(name, value)
+            index = combo.findData(getattr(config, key))
+            combo.setCurrentIndex(index if index >= 0 else len(presets) - 1)
+            caster.addRow(label, combo)
+            field = QLineEdit(getattr(config, key))
+            self.fields[key] = field
+            custom = QWidget()
+            custom_layout = QVBoxLayout(custom)
+            custom_layout.setContentsMargins(0, 0, 0, 0)
+            custom_layout.addWidget(field)
+            custom_help = QLabel('Campos: {title}, {artist}, {album}, {album_artist}, {year}, {genre}.')
+            custom_help.setWordWrap(True)
+            custom_layout.addWidget(custom_help)
+            caster.addRow(custom)
+            preview = QLabel()
+            preview.setTextFormat(Qt.TextFormat.PlainText)
+            def preview_format():
+                from .title_format import format_title
+                from .model import Snapshot
+                try:
+                    preview.setText(format_title(Snapshot('preview', artist='Artista', title='Canción', album='Álbum', year='2026'), field.text()))
+                except ValueError as error:
+                    preview.setText(str(error))
+            def choose_preset():
+                value = combo.currentData()
+                custom.setVisible(value is None)
+                if value is not None:
+                    field.setText(value)
+            combo.currentIndexChanged.connect(choose_preset)
+            field.textChanged.connect(preview_format)
+            caster.addRow('Ejemplo', preview)
+            choose_preset()
+            preview_format()
+            return combo
+        self.title_presets = title_selector('title_format', 'Presentación en MetaDATA')
+        self.broadcast_presets = title_selector('broadcast_title_format', 'Texto para el emisor')
+        self.broadcast_warning = QLabel()
+        self.broadcast_warning.setTextFormat(Qt.TextFormat.PlainText)
+        self.broadcast_warning.setWordWrap(True)
+        def broadcast_warning():
+            compatible = self.fields['broadcast_title_format'].text() == '{artist} - {title}'
+            self.broadcast_warning.setText('Este formato puede invertir o impedir la identificación de artista y canción en servidores que separan el texto por guion. Para compatibilidad usa Artista - Canción.' if not compatible else '')
+            self.broadcast_warning.setVisible(not compatible)
+        self.fields['broadcast_title_format'].textChanged.connect(broadcast_warning)
+        broadcast_warning()
+        caster.addRow(self.broadcast_warning)
+        note(caster, 'El emisor recibe TXT y XML/CASTTITLE; por defecto se usa Artista - Canción para que el servidor identifique los campos correctamente. El formato de presentación se conserva por separado. Los campos ARTIST, TITLE y ALBUM no cambian de significado.')
         caster.addRow(OutputFilesWidget(self.data_directory / ('demo-output' if demo else 'output')))
         help_button = QPushButton('Cómo conectarlo a mi emisor')
         help_button.setMaximumWidth(240)
@@ -274,7 +288,7 @@ class SettingsDialog(QDialog):
         help_form = QFormLayout(help_widget)
         help_form.setContentsMargins(0, 4, 0, 4)
         note(help_form, 'Selecciona en tu emisor el archivo y formato que admita. TXT entrega el título combinado; XML y JSON requieren un lector compatible. Las conexiones de audio se configuran en el emisor.')
-        note(help_form, 'RadioCaster: Read from XML file, con Title Format {TRACK[CASTTITLE]}. Puedes mantener esa plantilla y cambiar el contenido desde la lista de MetaDATA. El XML no transporta imágenes por sí solo.')
+        note(help_form, 'RadioCaster: Read from XML file, con Title Format {TRACK[CASTTITLE]}. Puedes mantener esa plantilla. Su contenido usa Texto para el emisor; Presentación en MetaDATA no altera lo que se transmite. El XML no transporta imágenes por sí solo.')
         help_widget.hide()
         help_button.toggled.connect(help_widget.setVisible)
         caster.addRow(help_widget)
