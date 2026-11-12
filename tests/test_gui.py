@@ -381,3 +381,74 @@ class GuiTests(unittest.TestCase):
                 self.assertNotIn('break_message', window.settings_form.fields)
             finally:
                 window.quit()
+
+    def test_startup_and_tray_preferences_show_restore_minimize_and_close(self):
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtTest import QTest
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.gui import MainWindow
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp));config = store.load()
+            config.spotify_enabled = False
+            config.start_hidden = True
+            window = MainWindow(store, config, demo=False)
+            window.worker.stop();window.worker.wait()
+            try:
+                self.assertIn('Inicio y bandeja', window.settings_form.page_names)
+                with patch('radio_metadata.gui.QSystemTrayIcon.isSystemTrayAvailable', return_value=True), \
+                     patch.object(window.tray, 'show'):
+                    window.present_initially()
+                    self.assertFalse(window.isVisible())
+                    window.restore()
+                    self.assertTrue(window.isVisible())
+                    with patch.object(window.worker, 'stop', wraps=window.worker.stop) as stop:
+                        self.assertFalse(window.close())
+                        stop.assert_not_called()
+                    window.restore()
+                    config.minimize_to_tray = True
+                    window.showMinimized();QTest.qWait(20)
+                    self.assertFalse(window.isVisible())
+                    window.restore()
+                with patch('radio_metadata.gui.QSystemTrayIcon.isSystemTrayAvailable', return_value=False):
+                    window.present_initially()
+                    self.assertTrue(window.isVisible())
+                    self.assertTrue(window.isMinimized())
+                    window.present_initially(force_visible=True)
+                    self.assertTrue(window.isVisible())
+                    self.assertFalse(window.isMinimized())
+                window.demo = True
+                window.present_initially(force_hidden=True)
+                self.assertTrue(window.isVisible())
+                window.demo = False
+                config.close_to_tray = False
+                with patch('radio_metadata.gui.QSystemTrayIcon.isSystemTrayAvailable', return_value=True), \
+                     patch.object(window.worker, 'stop', wraps=window.worker.stop) as stop:
+                    self.assertTrue(window.close())
+                    stop.assert_called_once()
+            finally:
+                window.quit()
+
+    def test_visibility_preferences_save_and_cancel_without_enabling_autostart(self):
+        from PySide6.QtWidgets import QApplication
+        from radio_metadata.config import ConfigStore
+        from radio_metadata.settings import SettingsDialog
+        from radio_metadata.credentials import MemoryCredentials
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ConfigStore(Path(tmp));original = store.load()
+            dialog = SettingsDialog(original, store=store, credentials=MemoryCredentials(), page='Inicio y bandeja')
+            dialog.fields['start_hidden'].setChecked(True)
+            dialog.fields['minimize_to_tray'].setChecked(True)
+            dialog.fields['close_to_tray'].setChecked(False)
+            dialog.save()
+            saved = store.load()
+            self.assertTrue(saved.start_hidden)
+            self.assertTrue(saved.minimize_to_tray)
+            self.assertFalse(saved.close_to_tray)
+            self.assertFalse(saved.start_with_windows)
+            cancelled = SettingsDialog(saved, store=store, credentials=MemoryCredentials(), page='Inicio y bandeja')
+            cancelled.fields['start_hidden'].setChecked(False)
+            cancelled.reject()
+            self.assertTrue(store.load().start_hidden)

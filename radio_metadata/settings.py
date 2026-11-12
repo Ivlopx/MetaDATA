@@ -1,6 +1,7 @@
 """Native settings forms. Secrets are staged until the complete dialog is saved."""
 from dataclasses import asdict
 from pathlib import Path
+import sys
 
 from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -12,8 +13,9 @@ from .output_files import OutputFilesWidget
 from .config import Config
 from .source_settings import SourceSettings
 from .folder_settings import FolderSettings
-from .credentials import CredentialError, MemoryCredentials, secret_id, commit_settings
+from .credentials import CredentialError, MemoryCredentials, secret_id
 from .connection_tests import OverlayCredentials, check_connection
+from .startup import StartupError, commit_startup_settings
 
 
 def credential_key(service, config):
@@ -344,6 +346,16 @@ class SettingsDialog(QDialog):
         self.refresh_ogg_command()
         note(ogg, 'AAC/MP3 directos entregan audio; los títulos enviados por tu emisor y los archivos Now Playing siguen siendo vías separadas. No incorporan portadas dinámicas. HLS añade etiquetas ID3 con los datos y la imagen a segmentos AAC en output/hls/live.m3u8. Requiere alojamiento HTTP y un reproductor que interprete ID3/APIC; hay una prueba de laboratorio con Chrome y hls.js, pendiente de validar con tu emisor en Windows. No se sube al servidor automáticamente. Ogg conserva sus portadas incorporadas para clientes compatibles.')
 
+        behavior = section('Inicio y bandeja')
+        autorun = check(behavior, 'start_with_windows', 'Iniciar MetaDATA al iniciar sesión en Windows')
+        autorun.setEnabled(sys.platform == 'win32' and not demo)
+        check(behavior, 'start_hidden', 'Arrancar oculta en la bandeja del sistema')
+        check(behavior, 'minimize_to_tray', 'Ocultar en la bandeja al minimizar')
+        check(behavior, 'close_to_tray', 'La X oculta la ventana y mantiene la app funcionando')
+        note(behavior, 'Restaura la ventana desde el icono de MetaDATA en la bandeja. Salir termina la aplicación. Si no hay bandeja disponible, el arranque oculto minimiza la ventana para que puedas recuperarla. El inicio con Windows se configura para tu usuario al guardar; no requiere permisos de administrador. La demostración no cambia el inicio de Windows.')
+        if config.start_with_windows:
+            note(behavior, 'Si mueves la carpeta del programa, abre MetaDATA desde su nueva ubicación y guarda estos ajustes para actualizar el inicio automático.')
+
         advanced = section('Avanzados')
         number(advanced, 'poll_seconds', 'Consultar fuentes cada (segundos)', 1, 30)
         number(advanced, 'stale_seconds', 'Caducidad de metadatos (segundos)', 15, 300)
@@ -507,12 +519,12 @@ class SettingsDialog(QDialog):
         try:
             config, changes = self.collect()
             if self.store:
-                commit_settings(self.store, config, self.credentials, changes)
+                commit_startup_settings(self.store, config, self.credentials, changes, self.original, demo=self.demo)
             elif changes:
                 self.message.setText('No se definió una carpeta de datos para guardar las claves.')
                 return
             self.result_config = config
-        except (ValueError, TypeError, CredentialError) as error:
+        except (ValueError, TypeError, CredentialError, StartupError) as error:
             self.message.setText(str(error))
             return
         except Exception:

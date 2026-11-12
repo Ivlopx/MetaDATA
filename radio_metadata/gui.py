@@ -4,7 +4,7 @@ from pathlib import Path
 import queue
 import threading
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QEvent, QTimer
 from PySide6.QtGui import QCloseEvent, QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QLabel,
@@ -487,6 +487,27 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
+    def present_initially(self, *, force_hidden=False, force_visible=False):
+        hidden = not self.demo and not force_visible and (force_hidden or self.config.start_hidden)
+        if not hidden:
+            self.showNormal()
+        elif QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.show()
+            self.hide()
+        else:
+            self.showMinimized()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if (event.type() == QEvent.Type.WindowStateChange and self.isMinimized()
+                and self.config.minimize_to_tray and QSystemTrayIcon.isSystemTrayAvailable()):
+            QTimer.singleShot(0, self.hide_if_minimized)
+
+    def hide_if_minimized(self):
+        if self.isMinimized() and self.config.minimize_to_tray and QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.show()
+            self.hide()
+
     def hide_to_tray(self):
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.hide()
@@ -494,13 +515,15 @@ class MainWindow(QMainWindow):
             self.showMinimized()
 
     def closeEvent(self, event: QCloseEvent):
-        if ((self.exiting or not QSystemTrayIcon.isSystemTrayAvailable()) and self.settings_form
+        will_exit = self.exiting or not self.config.close_to_tray or not QSystemTrayIcon.isSystemTrayAvailable()
+        if (will_exit and self.settings_form
                 and any(thread.isRunning() for thread in self.settings_form.findChildren(QThread))):
             self.settings_form.message.setText('Espera a que termine la comprobación antes de salir.')
             self.tabs.setCurrentIndex(self.settings_tab)
             event.ignore()
             return
-        if not self.exiting and QSystemTrayIcon.isSystemTrayAvailable():
+        if not will_exit:
+            self.tray.show()
             self.hide()
             event.ignore()
         else:
@@ -508,6 +531,7 @@ class MainWindow(QMainWindow):
             # Wait for bounded network calls and the metadata clear.
             self.worker.wait()
             event.accept()
+            QApplication.quit()
 
     def quit(self):
         self.exiting = True

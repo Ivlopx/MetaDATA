@@ -33,6 +33,10 @@ class Config:
     history_visible_limit: int = 200
     cover_cache_mb: int = 128
     theme: str = "system"
+    start_with_windows: bool = False
+    start_hidden: bool = False
+    close_to_tray: bool = True
+    minimize_to_tray: bool = False
     managed_credentials: list[str] = field(default_factory=list)
     station_name: str = "Mi estación"
     slogan: str = "Tu música, tu compañía"

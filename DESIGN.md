@@ -27,7 +27,7 @@ Las instrucciones específicas de emisores se agrupan bajo una ayuda desplegable
 
 ## Comportamiento
 
-Guardar aplica la configuración al motor y actualiza los estados. Descartar restaura la configuración aplicada y elimina las claves pendientes, sin cambiar el almacén de credenciales. Cambiar de pestaña no descarta el formulario. Enter en un campo no guarda automáticamente. Las comprobaciones en curso impiden destruir su formulario; ocultar en la bandeja sigue permitido.
+Guardar aplica la configuración al motor y actualiza los estados. Descartar restaura la configuración aplicada y elimina las claves pendientes, sin cambiar el almacén de credenciales. Cambiar de pestaña no descarta el formulario. Enter en un campo no guarda automáticamente. Las comprobaciones en curso impiden destruir su formulario; ocultar en la bandeja sigue permitido. Inicio y bandeja reúne el inicio con Windows, el arranque oculto, el minimizado y la elección de ocultar o cerrar con X. Salir siempre termina la app; si no hay bandeja se mantiene una ventana recuperable. El inicio automático está desactivado inicialmente y solo se registra al guardar esa preferencia.
 
 Atajos de Windows: Ctrl+1 a Ctrl+4 cambian de pantalla; Ctrl+, abre Ajustes. Ctrl+S guarda cuando el foco está dentro de Ajustes. Las tablas y los campos conservan la navegación nativa por teclado. Los mensajes de estado y errores se muestran como texto plano.
 

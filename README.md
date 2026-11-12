@@ -1,4 +1,4 @@
-# MetaDATA · copia de prueba 0.5.0a6
+# MetaDATA · copia de prueba 0.5.0a7
 
 **Versión en desarrollo:** MetaDATA es independiente del emisor. Ofrece archivos Now Playing y comandos generales de codificador, con adaptaciones específicas opcionales. AAC es el formato principal y MP3 el respaldo. Consulta [Prueba AAC y HLS para Windows](docs/PRUEBA-AAC-WINDOWS.md). La salida HLS local con ID3 y portada es experimental; no se presupone que los reproductores interpreten las imágenes. Ogg/Opus continúa como opción para receptores compatibles: [guía Ogg](docs/PRUEBA-OGG-WINDOWS.md).
 
@@ -8,7 +8,7 @@ Aplicación de escritorio en español para Windows 11, Python 3.11 y PySide6. Ad
 
 La interfaz utiliza controles de escritorio, colores del sistema y cuatro pantallas: **Inicio, Historial, Conexiones y Ajustes**. El tema sigue Windows por defecto y permite elegir claro u oscuro. Ajustes contiene el formulario directamente; los accesos desde Conexiones llevan a esa misma pantalla. Las rutas se administran en Now Playing. Funciona en segundo plano con bandeja, ocultar y restaurar.
 
-Novedades de esta versión: [enfoque en metadatos](docs/NOVEDADES-0.5.0a6.md). Conserva el [formato único de título](docs/NOVEDADES-0.5.0a5.md), la [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md) y las fuentes, portadas y publicación al receptor.
+Novedades de esta versión: [inicio con Windows y bandeja](docs/NOVEDADES-0.5.0a7.md). Conserva el [enfoque en metadatos](docs/NOVEDADES-0.5.0a6.md). Conserva el [formato único de título](docs/NOVEDADES-0.5.0a5.md), la [interfaz simplificada](docs/NOVEDADES-0.5.0a3.md) y las fuentes, portadas y publicación al receptor.
 
 ## Instalar y actualizar en Windows
 
@@ -55,7 +55,7 @@ En **Ajustes → Now Playing**, **Formato del título combinado** es el único s
 
 En Inicio selecciona Automático o una fuente concreta. Si varias reproducen, se aplica la prioridad. Una fuente elegida manualmente no cambia a la otra cuando se pausa. **Pausar metadatos** vacía los datos publicados y suspende las consultas de fuentes; **Reanudar automático** retoma la selección.
 
-Cerrar con X oculta cuando existe bandeja. **Salir** termina el proceso y publica el vaciado de datos musicales por las salidas activas. Sin bandeja, Ocultar minimiza y X sale. El autoarranque no está implementado; puedes añadir un acceso directo a `iniciar.bat` en la carpeta de inicio de Windows después de validar la instalación.
+**Ajustes → Inicio y bandeja** permite iniciar con Windows, arrancar oculta, ocultarse al minimizar y elegir si la X oculta o cierra. Los ajustes se aplican al guardar; el arranque oculto se utiliza al abrir la app nuevamente. **Salir** termina el proceso y publica el vaciado de datos musicales por las salidas activas. Sin bandeja, el arranque oculto y Ocultar minimizan la ventana; la X cierra. El inicio con Windows se registra solo para tu usuario y tu perfil de datos. Consulta la [guía de inicio y bandeja](docs/NOVEDADES-0.5.0a7.md). Si usas un EXE, vuelve a construirlo para incorporar estas funciones.
 
 ## Receptor autohospedado
 
@@ -114,7 +114,7 @@ La carpeta predeterminada es `%LOCALAPPDATA%\RadioMetadataManager-OggPrueba`. La
 | `receiver.py`, `publication.py` | Receptor autohospedado y envío de metadatos y portada |
 | `aac_encoder.py`, `ogg_encoder.py` | Codificación por consola, con adaptación opcional de comandos |
 | `engine.py`, `storage.py` | Ciclo de trabajo e historial |
-| `config.py`, `credentials.py` | Ajustes y claves separadas |
+| `config.py`, `credentials.py`, `startup.py` | Ajustes, claves separadas e inicio por usuario en Windows |
 | `gui.py`, `settings.py`, `appearance.py` | Ventana, formularios y apariencia del sistema |
 | `connection_tests.py` | Comprobaciones de conexión de lectura |
 
