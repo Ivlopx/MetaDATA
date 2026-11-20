@@ -308,6 +308,7 @@ class SettingsDialog(QDialog):
         text(publish, 'tunein_station_id', 'ID de estación TuneIn (s seguido de números)')
         text(publish, 'tunein_partner_id', 'Partner ID de TuneIn')
         secret(publish, 'tunein', 'Partner Key de TuneIn')
+        check(publish, 'tunein_include_album', 'Enviar el álbum a TuneIn')
         note(publish, 'Antes de activar esta salida, desactiva el webhook de TuneIn en AzuraCast para evitar envíos duplicados. MetaDATA avisa al empezar una canción o un bloque sin música.')
         check(publish, 'azuracast_nowplaying_enabled', 'Publicar Now Playing en AzuraCast')
         text(publish, 'azuracast_url', 'Dirección HTTPS de AzuraCast')

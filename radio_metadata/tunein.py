@@ -47,7 +47,7 @@ class TuneInOutput:
                   'partnerId': self.config.tunein_partner_id, 'partnerKey': partner_key}
         if track:
             params.update(artist=event[0], title=event[1])
-            if album := clean(track.album):
+            if self.config.tunein_include_album and (album := clean(track.album)):
                 params['album'] = album
         else:
             params['commercial'] = 'true'

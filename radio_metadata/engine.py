@@ -42,6 +42,8 @@ class Engine:
             self.tunein = None
         elif self.tunein is None or self.tunein.key != tunein_key(config):
             self.tunein = TuneInOutput(config, self.credentials)
+        else:
+            self.tunein.config = config
         if not config.azuracast_nowplaying_enabled or self.demo:
             self.azuracast = None
         elif self.azuracast is None or (

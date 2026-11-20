@@ -76,6 +76,7 @@ class Config:
     receiver_url: str = ""
     receiver_heartbeat_seconds: int = 10
     tunein_enabled: bool = False
+    tunein_include_album: bool = True
     tunein_station_id: str = ""
     tunein_partner_id: str = ""
     excluded_terms: list[str] = field(default_factory=lambda: [
