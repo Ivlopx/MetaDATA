@@ -132,6 +132,29 @@ class AdapterTests(unittest.TestCase):
 
 
 class PersistenceTests(unittest.TestCase):
+    def test_broadcast_files_change_only_when_their_contents_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            config = Config(music_folders=[r"C:\Musica"])
+            output = LocalOutput(directory)
+            track = music(position_ms=1000)
+            first = output.publish(resolve([track], config), config)
+            paths = [directory / name for name in ('nowplaying.txt', 'nowplaying.xml')]
+            original_inodes = [path.stat().st_ino for path in paths]
+
+            output.publish(resolve([replace(track, position_ms=3000)], config), config)
+            self.assertEqual([path.stat().st_ino for path in paths], original_inodes)
+            current = json.loads((directory / 'nowplaying.json').read_text(encoding='utf-8'))
+            self.assertEqual(current['position_ms'], 3000)
+            self.assertGreater(current['updated_at'], first['updated_at'])
+
+            output.publish(resolve([replace(track, title='Otra canción')], config), config)
+            for path in paths:
+                self.assertIn('Otra canción', path.read_text(encoding='utf-8'))
+            paths[1].unlink()
+            output.publish(resolve([replace(track, title='Otra canción')], config), config)
+            self.assertTrue(paths[1].exists())
+
     def test_config_roundtrip_and_invalid_does_not_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = ConfigStore(Path(tmp))

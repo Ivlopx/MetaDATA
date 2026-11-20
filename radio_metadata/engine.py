@@ -5,10 +5,11 @@ from dataclasses import replace
 
 from .credentials import WindowsCredentials, MemoryCredentials
 from .model import Snapshot, resolve
-from .outputs import LocalOutput
+from .outputs import AzuraCastOutput, LocalOutput
 from .sources import make_sources
 from .storage import History
 from .publication import ReceiverOutput
+from .tunein import TuneInOutput, tunein_key
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,8 @@ class Engine:
         self.server_error = ''
         self.remote_records = []
         self.monitor = None
+        self.tunein = None
+        self.azuracast = None
         self.configure(config)
 
     def configure(self, config):
@@ -35,6 +38,16 @@ class Engine:
         # Legacy destination settings must never restart retired direct writers.
         self.outputs = []
         self.receiver = ReceiverOutput(config, self.local.directory, self.credentials) if config.receiver_enabled and not self.demo else None
+        if not config.tunein_enabled or self.demo:
+            self.tunein = None
+        elif self.tunein is None or self.tunein.key != tunein_key(config):
+            self.tunein = TuneInOutput(config, self.credentials)
+        if not config.azuracast_nowplaying_enabled or self.demo:
+            self.azuracast = None
+        elif self.azuracast is None or (
+            self.azuracast.config.azuracast_url, self.azuracast.config.azuracast_station
+        ) != (config.azuracast_url, config.azuracast_station):
+            self.azuracast = AzuraCastOutput(config, self.credentials)
         # Retired audio/monitoring settings are tolerated but never activate services.
         self.webdav = None
         self.monitor = None
@@ -53,6 +66,10 @@ class Engine:
             statuses.append('Error de salida local: el emisor podría conservar el título anterior')
         if self.receiver:
             statuses.append(await asyncio.to_thread(self.receiver.send, decision, state))
+        if self.tunein:
+            statuses.append(await asyncio.to_thread(self.tunein.send, decision))
+        if self.azuracast:
+            statuses.append(await asyncio.to_thread(self.azuracast.send, decision))
         if state is not None:
             state['artwork_url'] = ''
         if self.server:

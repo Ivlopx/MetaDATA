@@ -42,6 +42,8 @@ AAC/MP3 directos no incluyen portada dinámica. La opción HLS local con ID3/API
 
 Las portadas siguen obteniéndose de las fuentes y guardándose en covers. La caché local se limita por historial visible y espacio configurados. Publicación permite enviar los metadatos y la imagen juntos al receptor autohospedado; no requiere una URL de audio en MetaDATA.
 
+**Publicar Now Playing en AzuraCast** envía artista y título por POST al cambiar de canción. Configura la URL HTTPS, el ID de estación y una clave API con permiso de emisión. La prueba de acceso consulta el servidor sin publicar. Desactiva el envío de títulos a ese destino en tu emisor si MetaDATA publica directamente. Las pausas se mantienen vacías en los archivos locales; AzuraCast 0.24.0 conserva su último registro musical. El POST no carga las portadas de las canciones externas ni actualiza su álbum o género.
+
 ## Configuraciones anteriores
 
 Se retiraron las conexiones AzuraCast y Zeno.fm de la pantalla Conexiones, la página Icecast directo y el monitor de servidores. El motor ignora las antiguas salidas directas incluso si estaban activadas en el perfil. Al guardar ajustes se desactivan sus indicadores, conservando las direcciones históricas y las credenciales guardadas; no se borran claves ni se cambian servidores o conexiones del emisor.

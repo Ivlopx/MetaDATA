@@ -75,6 +75,9 @@ class Config:
     receiver_enabled: bool = False
     receiver_url: str = ""
     receiver_heartbeat_seconds: int = 10
+    tunein_enabled: bool = False
+    tunein_station_id: str = ""
+    tunein_partner_id: str = ""
     excluded_terms: list[str] = field(default_factory=lambda: [
         "anuncio", "publicidad", "commercial", "advertisement", "promo", "jingle", "spot"])
     excluded_types: list[str] = field(default_factory=lambda: [
@@ -88,6 +91,7 @@ class Config:
     icecast_monitor_url: str = "https://icecast.example:8000"
     icecast_monitor_mount: str = "/live.mp3"
     azuracast_write_enabled: bool = False
+    azuracast_nowplaying_enabled: bool = False
     azuracast_key_env: str = "AZURACAST_API_KEY"
     stream_url: str = ""
     local_server_enabled: bool = False
@@ -155,6 +159,12 @@ class Config:
             raise ValueError('Completa la dirección del receptor.')
         if self.receiver_enabled and self.poll_seconds > self.receiver_heartbeat_seconds:
             raise ValueError('La consulta de fuentes debe ser igual o más frecuente que la confirmación al receptor.')
+        if self.tunein_enabled:
+            station_id = self.tunein_station_id
+            if not station_id.startswith('s') or not station_id[1:].isascii() or not station_id[1:].isdigit():
+                raise ValueError('El ID de estación de TuneIn debe empezar con s y continuar con números.')
+            if not self.tunein_partner_id.strip():
+                raise ValueError('Completa el Partner ID de TuneIn.')
         from .source_catalog import windows_source_id
         source_ids, app_ids = set(), set()
         if len(self.windows_sources) > 32:
@@ -197,7 +207,7 @@ class Config:
             self._url(self.stream_url)
         if not self.azuracast_station or not all(c.isalnum() or c in "_-" for c in self.azuracast_station):
             raise ValueError("Identificador de estación inválido")
-        if self.azuracast_write_enabled and urlsplit(self.azuracast_url).scheme != "https":
+        if (self.azuracast_write_enabled or self.azuracast_nowplaying_enabled) and urlsplit(self.azuracast_url).scheme != "https":
             raise ValueError("La publicación autenticada AzuraCast requiere HTTPS")
         for value in (self.webdav_upload_url, self.webdav_public_url):
             if value:

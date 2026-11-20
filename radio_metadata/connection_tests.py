@@ -72,9 +72,11 @@ async def check_connection(name, config, credentials, directory):
         if name == 'AzuraCast':
             def check():
                 headers = {}
-                if config.azuracast_write_enabled:
+                authenticated = config.azuracast_nowplaying_enabled or config.azuracast_write_enabled
+                if authenticated:
                     key = secret_id('azuracast', config.azuracast_url)
-                    token = read_secret(credentials, key, config.azuracast_key_env, managed=key in config.managed_credentials)
+                    managed = config.azuracast_nowplaying_enabled or key in config.managed_credentials
+                    token = read_secret(credentials, key, config.azuracast_key_env, managed=managed)
                     if not token:
                         return False, 'Introduce una clave API antes de activar la publicación directa.'
                     headers['X-API-Key'] = token
@@ -83,7 +85,7 @@ async def check_connection(name, config, credentials, directory):
                     url = f'{config.azuracast_url.rstrip("/")}/api/nowplaying/{config.azuracast_station}'
                 with httpx.Client(timeout=3, follow_redirects=False, trust_env=False, headers=headers) as client:
                     data = read_json(client, url)
-                if config.azuracast_write_enabled:
+                if authenticated:
                     return True, 'La clave permite consultar la estación. Esta prueba no publica títulos ni confirma permisos de escritura.'
                 state = azuracast_state(data)
                 return True, 'AzuraCast respondió. ' + ('Estación online.' if state['online'] else 'Estación fuera de línea.')

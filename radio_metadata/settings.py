@@ -19,6 +19,11 @@ from .startup import StartupError, commit_startup_settings
 
 
 def credential_key(service, config):
+    if service == 'azuracast':
+        return secret_id(service, config.azuracast_url)
+    if service == 'tunein':
+        from .tunein import tunein_key
+        return tunein_key(config)
     if service == 'receiver':
         from .publication import publication_key
         return publication_key(config)
@@ -299,6 +304,17 @@ class SettingsDialog(QDialog):
         number(publish, 'receiver_heartbeat_seconds', 'Confirmar vigencia cada (segundos)', 1, 10)
         probe(publish, 'Receptor')
         note(publish, 'Envía la ficha y la imagen juntas al cambiar la canción. Durante pausas y exclusiones vacía los campos. El receptor publica /nowplaying.json y /artwork; si se corta la conexión, caducan automáticamente. Funciona con tu servidor, independientemente del programa de emisión. Requiere instalar el receptor incluido en el proyecto.')
+        check(publish, 'tunein_enabled', 'Publicar directamente en TuneIn AIR')
+        text(publish, 'tunein_station_id', 'ID de estación TuneIn (s seguido de números)')
+        text(publish, 'tunein_partner_id', 'Partner ID de TuneIn')
+        secret(publish, 'tunein', 'Partner Key de TuneIn')
+        note(publish, 'Antes de activar esta salida, desactiva el webhook de TuneIn en AzuraCast para evitar envíos duplicados. MetaDATA avisa al empezar una canción o un bloque sin música.')
+        check(publish, 'azuracast_nowplaying_enabled', 'Publicar Now Playing en AzuraCast')
+        text(publish, 'azuracast_url', 'Dirección HTTPS de AzuraCast')
+        text(publish, 'azuracast_station', 'ID de la estación en AzuraCast')
+        secret(publish, 'azuracast', 'Clave API de AzuraCast')
+        probe(publish, 'AzuraCast', 'Comprobar acceso a AzuraCast')
+        note(publish, 'Envía artista y título al cambiar de canción. En esa salida desactiva el envío de títulos de RadioCaster si usas esta opción. El POST no limpia Now Playing durante las pausas ni actualiza álbum, género o portada.')
 
         ogg = section('Codificador')
         note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. Para un emisor que admita codificador externo por consola: recibe audio PCM de 16 bits por entrada estándar y devuelve audio codificado por salida estándar. Comprueba ese contrato en tu programa; este módulo no captura audio ni conecta al servidor.')
@@ -467,6 +483,14 @@ class SettingsDialog(QDialog):
         changes = {}
         for service, field in self.secrets.items():
             changes.update(field.pending(credential_key(service, config)))
+        for enabled, service, message in (
+            (config.tunein_enabled, 'tunein', 'Guarda el Partner Key para activar TuneIn AIR.'),
+            (config.azuracast_nowplaying_enabled, 'azuracast', 'Guarda la clave API para activar AzuraCast.'),
+        ):
+            if enabled:
+                key = credential_key(service, config)
+                if not (changes[key] if key in changes else self.credentials.get(key)).strip():
+                    raise ValueError(message)
         changed_endpoints = {credential_key(service, config) for service in self.secrets
                              if credential_key(service, config) != credential_key(service, self.original)}
         config.managed_credentials = sorted(set(config.managed_credentials) | set(changes) | changed_endpoints)

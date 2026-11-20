@@ -34,6 +34,15 @@ class LocalOutput:
     def __init__(self, directory: Path):
         self.directory = directory
 
+    def _write_if_changed(self, name, data):
+        path = self.directory / name
+        try:
+            if path.read_bytes() == data:
+                return
+        except FileNotFoundError:
+            pass
+        atomic_write(path, data)
+
     def _image(self, data):
         kind = image_type(data)
         if not kind:
@@ -78,8 +87,9 @@ class LocalOutput:
             'website': config.website, 'idle_message': clean(config.description),
         }
         # No input filename, credentials, or observed/excluded tracks in public exports.
-        atomic_write(self.directory / 'nowplaying.txt', (state['text'] + '\n').encode('utf-8'))
-        atomic_write(self.directory / 'nowplaying.xml', xml_state(state))
+        self._write_if_changed('nowplaying.txt', (state['text'] + '\n').encode('utf-8'))
+        self._write_if_changed('nowplaying.xml', xml_state(state))
+        # Encoders use the JSON timestamp to expire metadata if MetaDATA stops.
         atomic_write(self.directory / 'nowplaying.json', json.dumps(state, ensure_ascii=False, indent=2).encode('utf-8'))
         prune_images(self.directory, {state['artwork_file'], logo_file}, retained_images,
                      config.history_visible_limit + 2, config.cover_cache_mb * 1024 * 1024)
@@ -163,8 +173,25 @@ class AzuraCastOutput(RetryingOutput):
         self.config = config
         self.credentials = credentials
 
+    def send(self, decision, state=None):
+        if self.config.azuracast_nowplaying_enabled:
+            if not decision.song:
+                self.last_key = None
+                self.status = 'AzuraCast: en espera de una canción'
+                return self.status
+            if self.key(decision, state) == self.last_key:
+                return self.status
+        return super().send(decision, state)
+
+    def key(self, decision, state):
+        if self.config.azuracast_nowplaying_enabled and decision.song:
+            return clean(decision.song.artist), clean(decision.song.title)
+        return super().key(decision, state)
+
     def publish(self, decision, state=None):
-        token = read_secret(self.credentials, secret_id('azuracast', self.config.azuracast_url), self.config.azuracast_key_env, managed=secret_id('azuracast', self.config.azuracast_url) in self.config.managed_credentials)
+        key = secret_id('azuracast', self.config.azuracast_url)
+        managed = self.config.azuracast_nowplaying_enabled or key in self.config.managed_credentials
+        token = read_secret(self.credentials, key, self.config.azuracast_key_env, managed=managed)
         if not token:
             raise ValueError('Falta clave API AzuraCast')
         # Restrict to supported, editorial fields; never forward album, art, media_id or liq_*.
@@ -176,7 +203,7 @@ class AzuraCastOutput(RetryingOutput):
             response.raise_for_status()
             if len(response.content) > 128000 or response.json().get('success') is not True:
                 raise ValueError('Respuesta AzuraCast no confirmada')
-        return 'AzuraCast: solicitud de artista/título aceptada; comprobar monitor remoto'
+        return 'AzuraCast: solicitud de artista y título aceptada'
 
 
 class WebDavOutput(RetryingOutput):

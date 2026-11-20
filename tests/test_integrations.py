@@ -236,6 +236,38 @@ class IntegrationTests(unittest.TestCase):
                     finally:
                         engine.close()
 
+    def test_engine_posts_new_song_to_azuracast_and_skips_pause(self):
+        from urllib.parse import parse_qs
+        from radio_metadata.credentials import MemoryCredentials, secret_id
+
+        config = replace(self.config, azuracast_nowplaying_enabled=True)
+        credentials = MemoryCredentials()
+        credentials.set(secret_id('azuracast', config.azuracast_url), 'test-key')
+        requests = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(200, json={'success': True})
+
+        with tempfile.TemporaryDirectory() as tmp, self.client(handler):
+            engine = Engine(config, Path(tmp), credentials=credentials)
+            try:
+                asyncio.run(engine.publish(self.decision))
+                asyncio.run(engine.publish(self.decision))
+                asyncio.run(engine.publish(resolve([], config)))
+                engine.configure(config)
+                asyncio.run(engine.publish(resolve([music(title='Otra canción')], config)))
+            finally:
+                engine.close()
+
+        self.assertEqual(len(requests), 2)
+        for request in requests:
+            self.assertEqual(request.method, 'POST')
+            self.assertEqual(request.url.path, f'/api/station/{config.azuracast_station}/nowplaying/update')
+            self.assertEqual(request.headers['X-API-Key'], 'test-key')
+            self.assertEqual(set(parse_qs(request.content.decode())), {'artist', 'title'})
+        self.assertEqual(parse_qs(requests[-1].content.decode())['title'], ['Otra canción'])
+
     def test_rejects_insecure_or_ambiguous_publish_configuration(self):
         cases = [replace(self.config, webdav_enabled=True), replace(self.config, webdav_public_url='http://cdn.example'),
                  replace(self.config, azuracast_write_enabled=True, azuracast_url='http://radio.example'),
