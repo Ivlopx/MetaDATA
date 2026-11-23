@@ -79,6 +79,8 @@ class Config:
     tunein_include_album: bool = True
     tunein_station_id: str = ""
     tunein_partner_id: str = ""
+    radionet_enabled: bool = False
+    radionet_slug: str = ""
     excluded_terms: list[str] = field(default_factory=lambda: [
         "anuncio", "publicidad", "commercial", "advertisement", "promo", "jingle", "spot"])
     excluded_types: list[str] = field(default_factory=lambda: [
@@ -113,6 +115,11 @@ class Config:
             raise ValueError("Referencias de credenciales inválidas")
         if self.version != 4:
             raise ValueError("Versión de configuración no compatible")
+        if self.radionet_enabled and (
+            not self.radionet_slug or not self.radionet_slug.isascii()
+            or not all(c.isalnum() or c in '-_' for c in self.radionet_slug)
+        ):
+            raise ValueError('Introduce solo el identificador de la ficha de radio.net, sin la URL.')
         if self.encoder_format not in ('aac', 'mp3', 'ogg'):
             raise ValueError('Formato de codificador inválido')
         if self.encoder_hls_enabled and self.encoder_format != 'aac':

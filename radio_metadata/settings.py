@@ -19,6 +19,8 @@ from .startup import StartupError, commit_startup_settings
 
 
 def credential_key(service, config):
+    if service == 'radionet':
+        return secret_id(service, config.radionet_slug)
     if service == 'azuracast':
         return secret_id(service, config.azuracast_url)
     if service == 'tunein':
@@ -317,6 +319,11 @@ class SettingsDialog(QDialog):
         probe(publish, 'AzuraCast', 'Comprobar acceso a AzuraCast')
         note(publish, 'Envía artista y título al cambiar de canción. En esa salida desactiva el envío de títulos de RadioCaster si usas esta opción. El POST no limpia Now Playing durante las pausas ni actualiza álbum, género o portada.')
 
+        check(publish, 'radionet_enabled', 'Publicar en radio.net')
+        text(publish, 'radionet_slug', 'Identificador de radio.net')
+        secret(publish, 'radionet', 'Clave API de radio.net')
+        note(publish, 'Usa el identificador que aparece después de /s/ en la ficha de tu estación. Si ya tienes un webhook de radio.net en AzuraCast, desactívalo al usar esta salida.')
+
         ogg = section('Codificador')
         note(ogg, 'AAC es la salida principal; MP3 queda como respaldo y Ogg como alternativa experimental. Para un emisor que admita codificador externo por consola: recibe audio PCM de 16 bits por entrada estándar y devuelve audio codificado por salida estándar. Comprueba ese contrato en tu programa; este módulo no captura audio ni conecta al servidor.')
         encoder_format = QComboBox()
@@ -486,6 +493,7 @@ class SettingsDialog(QDialog):
             changes.update(field.pending(credential_key(service, config)))
         for enabled, service, message in (
             (config.tunein_enabled, 'tunein', 'Guarda el Partner Key para activar TuneIn AIR.'),
+            (config.radionet_enabled, 'radionet', 'Guarda la clave API para activar radio.net.'),
             (config.azuracast_nowplaying_enabled, 'azuracast', 'Guarda la clave API para activar AzuraCast.'),
         ):
             if enabled:
